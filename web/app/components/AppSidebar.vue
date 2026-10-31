@@ -12,6 +12,7 @@ const adminLinks: NavigationMenuItem[] = [
   { label: 'Discounts', icon: 'i-lucide-tag', to: '/admin/discounts' },
   { label: 'Templates', icon: 'i-lucide-file-text', to: '/admin/templates' },
   { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' },
+  { label: 'Audit log', icon: 'i-lucide-scroll-text', to: '/admin/audit' },
 ]
 
 const staffLinks: NavigationMenuItem[] = [
