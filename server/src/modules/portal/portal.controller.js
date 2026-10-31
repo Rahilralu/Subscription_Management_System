@@ -1,5 +1,6 @@
 import { HttpError } from '../../lib/http-error.js'
 import * as portalService from './portal.service.js'
+import * as onlinePayments from './online-payments.service.js'
 
 function customerIdOf(req) {
   if (!req.user.customerId) throw new HttpError(403, 'No customer profile linked to this account')
@@ -46,4 +47,16 @@ export async function resume(req, res) {
 
 export async function plans(req, res) {
   res.json({ data: await portalService.listPlans() })
+}
+
+export function paymentConfig(req, res) {
+  res.json({ data: onlinePayments.paymentConfig() })
+}
+
+export async function startCheckout(req, res) {
+  res.json({ data: await onlinePayments.startCheckout(customerIdOf(req), req.valid.params.id) })
+}
+
+export async function confirmPayment(req, res) {
+  res.json({ data: await onlinePayments.confirmPayment(customerIdOf(req), req.user.sub, req.valid.params.id, req.valid.body) })
 }

@@ -20,4 +20,17 @@ export const env = {
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
   chatRateLimitPerMin: Number(process.env.CHAT_RATE_LIMIT_PER_MIN ?? 20),
+
+  // online payments from the customer portal: 'razorpay', 'demo' (simulated, works offline) or 'off'
+  paymentGateway: process.env.PAYMENT_GATEWAY ?? (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? 'razorpay' : 'off'),
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
+  razorpayApiUrl: process.env.RAZORPAY_API_URL ?? 'https://api.razorpay.com/v1',
+}
+
+if (!['razorpay', 'demo', 'off'].includes(env.paymentGateway)) {
+  throw new Error(`PAYMENT_GATEWAY must be razorpay, demo or off (got "${env.paymentGateway}")`)
+}
+if (env.paymentGateway === 'razorpay' && !(env.razorpayKeyId && env.razorpayKeySecret)) {
+  throw new Error('PAYMENT_GATEWAY=razorpay needs RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in server/.env')
 }
