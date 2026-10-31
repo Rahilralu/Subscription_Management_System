@@ -138,7 +138,7 @@ async function acceptQuotation() {
     await api(`/portal/subscriptions/${id}/accept`, { method: 'POST' })
     acceptOpen.value = false
     toast.add({ title: 'Quotation accepted', description: 'Thank you! Our team will start your subscription shortly.', color: 'success' })
-    await refresh()
+    await Promise.all([refresh(), refreshNuxtData('portal-quotations')])
   } catch (err) {
     toast.add({ title: 'Could not accept the quotation', description: apiErrorMessage(err), color: 'error' })
   } finally {
