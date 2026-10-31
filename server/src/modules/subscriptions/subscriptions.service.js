@@ -3,10 +3,12 @@ import { prisma } from '../../lib/prisma.js'
 import { HttpError } from '../../lib/http-error.js'
 import { nextNumber } from '../../lib/sequence.js'
 import { sendMail } from '../../lib/mailer.js'
+import { logAudit } from '../../lib/audit.js'
 import { addDays, businessToday, toDateString } from '../../lib/dates.js'
 import { escapeHtml, formatMoney } from '../../lib/format.js'
 import { lineInclude, priceLines } from '../billing/invoice.pricing.js'
 import { daysPaused, shiftForPause } from './pause.js'
+import { planChangeProblem } from './plan-change.js'
 
 const isCustomer = (user) => user.role === 'CUSTOMER'
 
@@ -310,6 +312,35 @@ export async function runAction(id, action, user, input = {}) {
   const result = await getSubscription(id, user)
   if (action !== 'send-quotation') return result
   return { ...result, emailSent: await emailQuotation(result) }
+}
+
+// Moves an active subscription to another plan from its next invoice. Nothing is charged or refunded
+// for the current period, and the next billing run uses the new plan's billing period.
+// db is the prisma client or a transaction, so approving a customer request can run it in its own transaction.
+export async function changeSubscriptionPlan(db, id, planId, userId, input = {}) {
+  const subscription = await findOrThrow(id, db)
+  const newPlan = await db.plan.findUnique({ where: { id: planId } })
+  if (!newPlan) throw new HttpError(400, 'Plan not found')
+
+  const problem = planChangeProblem(subscription, newPlan, businessToday())
+  if (problem) throw new HttpError(409, problem)
+
+  // matching on the old plan and status stops two people changing it at the same moment
+  const { count } = await db.subscription.updateMany({
+    where: { id, status: 'ACTIVE', planId: subscription.planId },
+    data: { planId: newPlan.id },
+  })
+  if (count === 0) throw new HttpError(409, 'Someone else just changed this subscription, reload and try again')
+
+  // the status does not change, so the history shows an Active -> Active row that carries the explanation
+  const note = `Plan changed from ${subscription.plan.name} to ${newPlan.name}, from the next invoice${input.note ? ` (${input.note})` : ''}`
+  await recordStatusChange(db, id, 'ACTIVE', 'ACTIVE', userId, note)
+  await logAudit(userId, 'subscription.plan_change', 'Subscription', id, { from: subscription.plan.name, to: newPlan.name }, db)
+}
+
+export async function changePlan(id, planId, user, input = {}) {
+  await prisma.$transaction((tx) => changeSubscriptionPlan(tx, id, planId, user.sub, input))
+  return getSubscription(id, user)
 }
 
 export async function renewSubscription(id, user) {

@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { actionNames } from './subscriptions.service.js'
 import {
   actionSchema,
+  changePlanSchema,
   createSubscriptionSchema,
   fromTemplateSchema,
   idParamSchema,
@@ -26,6 +27,7 @@ router.post('/from-template', staff, validate({ body: fromTemplateSchema }), sub
 router.get('/:id', validate({ params: idParamSchema }), subscriptions.get)
 router.patch('/:id', staff, validate({ params: idParamSchema, body: updateSubscriptionSchema }), subscriptions.update)
 router.post('/:id/renew', staff, validate({ params: idParamSchema }), subscriptions.renew)
+router.post('/:id/change-plan', staff, validate({ params: idParamSchema, body: changePlanSchema }), subscriptions.changePlan)
 
 // /:id/send-quotation, /confirm, /activate, /pause, /resume, /close
 for (const action of actionNames) {

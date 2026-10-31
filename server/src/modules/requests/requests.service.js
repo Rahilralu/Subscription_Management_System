@@ -4,7 +4,8 @@ import { HttpError } from '../../lib/http-error.js'
 import { logAudit } from '../../lib/audit.js'
 import { sendMail } from '../../lib/mailer.js'
 import { escapeHtml } from '../../lib/format.js'
-import { transitionSubscription } from '../subscriptions/subscriptions.service.js'
+import { toDateString } from '../../lib/dates.js'
+import { changeSubscriptionPlan, transitionSubscription } from '../subscriptions/subscriptions.service.js'
 
 export function listRequests({ status }) {
   return prisma.subscriptionRequest.findMany({
@@ -19,15 +20,27 @@ export function listRequests({ status }) {
   })
 }
 
-// Runs inside the approval's transaction. If the pause can't happen (say the subscription was already
+// Runs inside the approval's transaction. If the change can't happen (say the subscription was already
 // paused by hand, or invoices are still due) the approval is undone and staff see why.
-async function applyPause(tx, request, userId) {
+async function applyChange(what, change) {
   try {
-    await transitionSubscription(tx, request.subscriptionId, 'pause', userId, { note: `Customer request #${request.id}` })
+    await change()
   } catch (err) {
     if (!(err instanceof HttpError)) throw err
-    throw new HttpError(409, `The pause could not be applied: ${err.message}. Reject the request if it no longer applies.`)
+    throw new HttpError(409, `The ${what} could not be applied: ${err.message}. Reject the request if it no longer applies.`)
   }
+}
+
+function applyRequest(tx, request, userId) {
+  const note = `Customer request #${request.id}`
+
+  if (request.type === 'PAUSE') {
+    return applyChange('pause', () => transitionSubscription(tx, request.subscriptionId, 'pause', userId, { note }))
+  }
+  return applyChange('plan change', () => {
+    if (!request.planId) throw new HttpError(400, 'This request has no plan to change to')
+    return changeSubscriptionPlan(tx, request.subscriptionId, request.planId, userId, { note })
+  })
 }
 
 export async function decide(userId, id, approve, { decisionNote }) {
@@ -43,9 +56,7 @@ export async function decide(userId, id, approve, { decisionNote }) {
     }
 
     const request = await tx.subscriptionRequest.findUnique({ where: { id } })
-    if (approve && request.type === 'PAUSE') await applyPause(tx, request, userId)
-    // TODO(P3 integration): UPGRADE (plan change) is not applied automatically yet. Until the team decides
-    // what a plan change means for pricing, staff change the plan from the subscription page.
+    if (approve) await applyRequest(tx, request, userId)
 
     await logAudit(userId, approve ? 'request.approve' : 'request.reject', 'SubscriptionRequest', id, { decisionNote }, tx)
     return request
@@ -62,7 +73,7 @@ async function emailDecision(id) {
       where: { id },
       include: {
         customer: { select: { name: true, email: true } },
-        subscription: { select: { number: true } },
+        subscription: { select: { number: true, nextInvoiceDate: true } },
         plan: { select: { name: true } },
       },
     })
@@ -77,7 +88,9 @@ async function emailDecision(id) {
         <p>When you resume, your next invoice and end date move back by the number of days you were paused.
         You can resume any time from your account: ${env.appUrl}</p>${note}`
     } else {
-      outcome = `<p>We approved your request to ${what} (${escapeHtml(request.subscription.number)}). Our team will confirm once the change is made.</p>${note}`
+      const nextInvoice = request.subscription.nextInvoiceDate
+      outcome = `<p>You're on the <b>${escapeHtml(request.plan?.name)}</b> plan from your next invoice${nextInvoice ? ` on ${toDateString(nextInvoice)}` : ''} (${escapeHtml(request.subscription.number)}).
+        Nothing is charged or refunded for the current period.</p>${note}`
     }
 
     await sendMail({

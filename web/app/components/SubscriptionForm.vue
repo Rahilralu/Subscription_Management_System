@@ -28,8 +28,12 @@ const toast = useToast()
 
 const blankLine = (): FormLine => ({ productId: undefined, variantId: 0, quantity: 1 })
 
+// a customer's page links here with ?customerId=, so the customer is already chosen
+const requestedCustomerId = Number(useRoute().query.customerId)
+const preselectedCustomerId = props.options.customers.some((c) => c.id === requestedCustomerId) ? requestedCustomerId : undefined
+
 const state = reactive({
-  customerId: props.initial?.customerId as number | undefined,
+  customerId: (props.initial?.customerId ?? preselectedCustomerId) as number | undefined,
   planId: props.initial?.planId as number | undefined,
   startDate: props.initial?.startDate ?? todayInputValue(),
   expiryDate: props.initial?.expiryDate ?? '',
