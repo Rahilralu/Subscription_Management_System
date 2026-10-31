@@ -285,6 +285,24 @@ async function main() {
     update: {},
     create: { name: 'Yearly', price: 10000, billingPeriod: 'YEARLY', startDate },
   })
+  await prisma.plan.upsert({
+    where: { name: 'Weekly' },
+    update: {},
+    create: { name: 'Weekly', price: 300, billingPeriod: 'WEEKLY', startDate, autoClose: true },
+  })
+
+  if ((await prisma.discount.count()) === 0) {
+    await prisma.discount.create({
+      data: { name: 'Volume 10%', type: 'PERCENT', value: 10, minQuantity: 10, startDate, scope: 'SUBSCRIPTION', usageLimit: 100 },
+    })
+  }
+
+  // demo subscriptions/invoices/payments only on an empty database, so re-running the seed is safe.
+  // Runs before seedPortalDemo, which adds subscriptions of its own.
+  if ((await prisma.subscription.count()) === 0) {
+    await seedDemoData(admin.id)
+    console.log('Seeded demo subscriptions, invoices and payments')
+  }
 
   await seedPortalDemo()
 }
