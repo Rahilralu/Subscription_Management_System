@@ -30,7 +30,7 @@ async function loadPlans() {
 }
 
 let nextKey = 0
-const blankLine = (): LineRow => ({ key: nextKey++, productId: null, variantId: 0, quantity: 1, product: null })
+const blankLine = (quantity = 1): LineRow => ({ key: nextKey++, productId: null, variantId: 0, quantity, product: null })
 
 const state = reactive({
   name: '',
@@ -63,6 +63,14 @@ watch(open, (isOpen) => {
 })
 
 const selectedPlan = computed(() => plans.value.find((p) => p.id === state.planId))
+const minQuantity = computed(() => selectedPlan.value?.minQuantity ?? 1)
+
+// a plan with a minimum quantity raises any lines below it, so the template can be saved as is
+watch(minQuantity, (min) => {
+  for (const line of state.lines) {
+    if (line.quantity < min) line.quantity = min
+  }
+})
 
 function variantItems(line: LineRow) {
   const variants = line.productId ? variantsByProduct.get(line.productId) ?? [] : []
@@ -79,7 +87,7 @@ function onPick(line: LineRow, product: Product) {
 }
 
 function addLine() {
-  state.lines.push(blankLine())
+  state.lines.push(blankLine(minQuantity.value))
 }
 
 function removeLine(index: number) {
@@ -95,9 +103,8 @@ function validate() {
   }
   if (!state.lines.length) return 'Add at least one product'
   if (state.lines.some((l) => !l.productId)) return 'Every line needs a product'
-  const min = selectedPlan.value?.minQuantity ?? 1
-  if (state.lines.some((l) => !Number.isInteger(l.quantity) || l.quantity < min)) {
-    return `Every quantity must be a whole number of at least ${min}`
+  if (state.lines.some((l) => !Number.isInteger(l.quantity) || l.quantity < minQuantity.value)) {
+    return `Every quantity must be a whole number of at least ${minQuantity.value}`
   }
   const keys = state.lines.map((l) => `${l.productId}:${l.variantId}`)
   if (new Set(keys).size !== keys.length) return 'The same product and option appear twice'
@@ -164,8 +171,7 @@ async function save() {
             <div>
               <h3 class="text-sm font-medium text-highlighted">Products</h3>
               <p class="text-xs text-muted">
-                Prices are taken from the catalog when a subscription is created
-                <template v-if="selectedPlan && selectedPlan.minQuantity > 1">. Minimum quantity {{ selectedPlan.minQuantity }}</template>
+                Prices are taken from the catalog when a subscription is created.<template v-if="minQuantity > 1"> Minimum quantity {{ minQuantity }}.</template>
               </p>
             </div>
             <UButton icon="i-lucide-plus" size="sm" variant="soft" class="shrink-0" @click="addLine">Add product</UButton>
@@ -178,7 +184,7 @@ async function save() {
           >
             <ProductPicker v-model="line.productId" :selected="line.product" aria-label="Product" @pick="onPick(line, $event)" />
             <USelect v-model="line.variantId" :items="variantItems(line)" :disabled="!line.productId" aria-label="Option" class="w-full" />
-            <UInputNumber v-model="line.quantity" :min="selectedPlan?.minQuantity ?? 1" aria-label="Quantity" class="w-full" />
+            <UInputNumber v-model="line.quantity" :min="minQuantity" aria-label="Quantity" class="w-full" />
             <UButton
               icon="i-lucide-trash-2"
               color="error"
