@@ -60,3 +60,7 @@ export async function startCheckout(req, res) {
 export async function confirmPayment(req, res) {
   res.json({ data: await onlinePayments.confirmPayment(customerIdOf(req), req.user.sub, req.valid.params.id, req.valid.body) })
 }
+
+export async function acceptQuotation(req, res) {
+  res.json({ data: await portalService.acceptQuotation(customerIdOf(req), req.user.sub, req.valid.params.id) })
+}

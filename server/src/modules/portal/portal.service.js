@@ -135,3 +135,20 @@ export function listPlans() {
     orderBy: { price: 'asc' },
   })
 }
+
+// The customer agrees to a quotation from the portal: the same 'confirm' step staff use, so an
+// expired quotation is refused the same way. Staff then activate it, which starts billing.
+export async function acceptQuotation(customerId, userId, subscriptionId) {
+  const subscription = await prisma.subscription.findFirst({
+    where: { id: subscriptionId, customerId, status: { not: 'DRAFT' } },
+    select: { id: true, status: true },
+  })
+  if (!subscription) throw new HttpError(404, 'Subscription not found')
+  if (subscription.status !== 'QUOTATION') throw new HttpError(409, 'Only a quotation can be accepted')
+
+  await prisma.$transaction(async (tx) => {
+    await transitionSubscription(tx, subscriptionId, 'confirm', userId, { note: 'Accepted by the customer in the portal' })
+    await logAudit(userId, 'subscription.accept', 'Subscription', subscriptionId, undefined, tx)
+  })
+  return getSubscription(customerId, subscriptionId)
+}

@@ -26,6 +26,7 @@ interface Subscription {
   startDate: string
   expiryDate: string | null
   nextInvoiceDate: string | null
+  quotationValidUntil: string | null
   paymentTermDays: number
   recurringTotal: string
   plan: { id: number, name: string, billingPeriod: string, pausable: boolean }
@@ -122,6 +123,29 @@ async function resume() {
   }
 }
 
+const periodWord: Record<string, string> = { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month', YEARLY: 'year' }
+
+// accepting a quotation confirms it; staff then activate it and billing starts
+const acceptOpen = ref(false)
+const accepting = ref(false)
+const quotationExpired = computed(() =>
+  Boolean(sub.value?.quotationValidUntil && dateInputValue(sub.value.quotationValidUntil) < todayInputValue()),
+)
+
+async function acceptQuotation() {
+  accepting.value = true
+  try {
+    await api(`/portal/subscriptions/${id}/accept`, { method: 'POST' })
+    acceptOpen.value = false
+    toast.add({ title: 'Quotation accepted', description: 'Thank you! Our team will start your subscription shortly.', color: 'success' })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not accept the quotation', description: apiErrorMessage(err), color: 'error' })
+  } finally {
+    accepting.value = false
+  }
+}
+
 // lifecycle shown as a stepper; PAUSED sits on the Active step and DRAFT has not reached the customer yet
 const steps = ['Quotation', 'Confirmed', 'Active', 'Closed']
 const stepIndex = computed(() => ({ QUOTATION: 0, CONFIRMED: 1, ACTIVE: 2, PAUSED: 2, CLOSED: 3 } as Record<string, number>)[sub.value?.status ?? ''] ?? 0)
@@ -143,6 +167,22 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
         <StatusBadge :status="sub.status" />
         <span class="font-mono text-sm text-muted">{{ sub.number }}</span>
       </div>
+
+      <UCard v-if="sub.status === 'QUOTATION'" :ui="{ root: quotationExpired ? '' : 'ring-2 ring-primary' }">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-highlighted">{{ quotationExpired ? 'This quotation has expired' : 'Your quotation is ready' }}</h3>
+            <p class="text-sm text-muted">
+              <template v-if="quotationExpired">It was valid until {{ formatDate(sub.quotationValidUntil) }}. Contact us for a new one.</template>
+              <template v-else>
+                {{ formatMoney(sub.recurringTotal) }} per {{ periodWord[sub.plan.billingPeriod] ?? 'period' }} before tax.
+                <template v-if="sub.quotationValidUntil">Valid until {{ formatDate(sub.quotationValidUntil) }}.</template>
+              </template>
+            </p>
+          </div>
+          <UButton v-if="!quotationExpired" icon="i-lucide-check" size="lg" @click="acceptOpen = true">Accept quotation</UButton>
+        </div>
+      </UCard>
 
       <UCard>
         <ol class="flex items-start" aria-label="Subscription progress">
@@ -255,6 +295,18 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
         <div class="flex w-full justify-end gap-2">
           <UButton color="neutral" variant="ghost" @click="open = false">Cancel</UButton>
           <UButton :loading="saving" :disabled="requestType === 'UPGRADE' && !planId" @click="submitRequest">Send request</UButton>
+        </div>
+      </template>
+    </UModal>
+    <UModal
+      v-model:open="acceptOpen"
+      title="Accept this quotation?"
+      :description="sub ? `${sub.plan.name}, ${formatMoney(sub.recurringTotal)} per ${periodWord[sub.plan.billingPeriod] ?? 'period'} before tax. Billing starts once our team activates it.` : ''"
+    >
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="acceptOpen = false">Not yet</UButton>
+          <UButton icon="i-lucide-check" :loading="accepting" @click="acceptQuotation">Accept quotation</UButton>
         </div>
       </template>
     </UModal>
