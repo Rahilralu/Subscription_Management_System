@@ -297,6 +297,8 @@ async function main() {
     })
   }
 
+  await seedExtraCatalog(gst)
+
   // demo subscriptions/invoices/payments only on an empty database, so re-running the seed is safe.
   // Runs before seedPortalDemo, which adds subscriptions of its own.
   if ((await prisma.subscription.count()) === 0) {
@@ -305,6 +307,71 @@ async function main() {
   }
 
   await seedPortalDemo()
+}
+
+// More products so the shopping assistant has something to recommend. Products have no description or
+// category column, so `notes` carries the searchable text, and add-ons start with "Add-on:".
+// Added by name, so running the seed again never duplicates them.
+const extraCatalog = [
+  {
+    name: 'Inventory Management', salesPrice: 900, costPrice: 300,
+    notes: 'Inventory and stock management: multi-warehouse stock tracking, reorder alerts, barcode scanning, purchase orders. Suits retail, wholesale and distribution businesses.',
+    variants: [{ attribute: 'Edition', value: 'Standard', extraPrice: 0 }, { attribute: 'Edition', value: 'Pro', extraPrice: 400 }],
+  },
+  {
+    name: 'Accounting & GST', salesPrice: 1100, costPrice: 350,
+    notes: 'Accounting with GST invoicing and returns, bank reconciliation, expense tracking and financial reports for small and mid-size businesses.',
+    variants: [{ attribute: 'Edition', value: 'Standard', extraPrice: 0 }, { attribute: 'Edition', value: 'Pro', extraPrice: 500 }],
+  },
+  {
+    name: 'CRM', salesPrice: 700, costPrice: 200,
+    notes: 'Customer relationship management: leads, sales pipeline, follow-up reminders, quotations and email integration for sales teams.',
+  },
+  {
+    name: 'HR & Payroll', salesPrice: 1000, costPrice: 320,
+    notes: 'HR and payroll: employee records, attendance, leave, salary slips, PF and ESI compliance for growing teams.',
+  },
+  {
+    name: 'Point of Sale', salesPrice: 850, costPrice: 250,
+    notes: 'Point of sale for shops, cafes and restaurants: billing counter, barcode scanning, receipts, discounts, works offline and syncs later.',
+  },
+  {
+    name: 'E-commerce Store', salesPrice: 950, costPrice: 300,
+    notes: 'Online store connected to your inventory: product catalogue, payment gateway, order tracking and shipping labels.',
+  },
+  {
+    name: 'Extra User Pack (10 users)', salesPrice: 600, costPrice: 100,
+    notes: 'Add-on: ten more user seats for any module. Choose it when your team is larger than the base licence.',
+  },
+  {
+    name: 'Priority Support', salesPrice: 1500, costPrice: 500,
+    notes: 'Add-on: 24x7 priority support with a one-hour response time and a dedicated account manager.',
+  },
+  {
+    name: 'Daily Backup & Recovery', salesPrice: 400, costPrice: 80,
+    notes: 'Add-on: automatic daily backups kept for 30 days, with one-click restore. Protects against data loss.',
+  },
+  {
+    name: 'Custom Domain & Branding', salesPrice: 300, costPrice: 40,
+    notes: 'Add-on: use your own domain, logo and colours on invoices, emails and the customer portal.',
+  },
+  {
+    name: 'Onboarding & Data Migration', salesPrice: 2500, costPrice: 900,
+    notes: 'Add-on: guided setup, data import from spreadsheets or your old software, and staff training sessions.',
+  },
+]
+
+async function seedExtraCatalog(gst) {
+  for (const { variants, ...product } of extraCatalog) {
+    if (await prisma.product.findFirst({ where: { name: product.name } })) continue
+    await prisma.product.create({
+      data: {
+        ...product,
+        taxes: { connect: { id: gst.id } },
+        ...(variants && { variants: { create: variants } }),
+      },
+    })
+  }
 }
 
 // A few hand-made subscriptions and invoices so the customer portal has something to show
