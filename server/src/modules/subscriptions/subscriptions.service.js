@@ -37,7 +37,7 @@ async function findOrThrow(id, db = prisma) {
 }
 
 // turns the requested lines into rows with the price copied from the catalog at this moment
-async function buildLines(lines, plan) {
+export async function buildLines(lines, plan) {
   const [products, variants] = await Promise.all([
     prisma.product.findMany({ where: { id: { in: lines.map((line) => line.productId) }, active: true } }),
     prisma.productVariant.findMany({ where: { id: { in: lines.flatMap((line) => (line.variantId ? [line.variantId] : [])) } } }),
@@ -64,7 +64,7 @@ async function buildLines(lines, plan) {
   })
 }
 
-async function findActivePlan(planId) {
+export async function findActivePlan(planId) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } })
   if (!plan?.active) throw new HttpError(400, 'Plan not found or inactive')
   return plan
