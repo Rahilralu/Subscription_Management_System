@@ -1,4 +1,5 @@
-const publicPages = ['/login', '/signup', '/forgot-password', '/reset-password']
+// '/' is the landing page for visitors; logged-in users are sent on to their dashboard below
+const publicPages = ['/', '/login', '/signup', '/forgot-password', '/reset-password']
 
 const allowedAreas: Record<string, string[]> = {
   ADMIN: ['admin', 'staff'],
