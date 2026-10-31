@@ -6,6 +6,7 @@ import { sendMail } from '../../lib/mailer.js'
 import { addDays, businessToday, toDateString } from '../../lib/dates.js'
 import { escapeHtml, formatMoney } from '../../lib/format.js'
 import { lineInclude, priceLines } from '../billing/invoice.pricing.js'
+import { daysPaused, shiftForPause } from './pause.js'
 
 const isCustomer = (user) => user.role === 'CUSTOMER'
 
@@ -26,8 +27,8 @@ export function recordStatusChange(db, subscriptionId, fromStatus, toStatus, cha
   })
 }
 
-async function findOrThrow(id) {
-  const subscription = await prisma.subscription.findUnique({
+async function findOrThrow(id, db = prisma) {
+  const subscription = await db.subscription.findUnique({
     where: { id },
     include: { plan: true, customer: true, lines: { include: lineInclude, orderBy: { id: 'asc' } } },
   })
@@ -251,10 +252,8 @@ const actions = {
     label: 'resume',
     from: ['PAUSED'],
     to: 'ACTIVE',
-    // billing skips the paused time instead of invoicing it later
-    data: (sub, today) => ({
-      nextInvoiceDate: sub.nextInvoiceDate && sub.nextInvoiceDate < today ? today : sub.nextInvoiceDate,
-    }),
+    // the paused time is neither billed nor used up: see shiftForPause
+    data: (sub, today, input, { days }) => shiftForPause(sub, days),
   },
   close: {
     label: 'close',
@@ -269,9 +268,21 @@ const actions = {
 
 export const actionNames = Object.keys(actions)
 
-export async function runAction(id, action, user, input = {}) {
+// days since the subscription was last paused, as of today
+async function daysPausedUntil(db, id, today) {
+  const paused = await db.subscriptionStatusHistory.findFirst({
+    where: { subscriptionId: id, toStatus: 'PAUSED' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: { createdAt: true },
+  })
+  return paused ? daysPaused(businessToday(paused.createdAt), today) : 0
+}
+
+// Applies one status move. db is the prisma client or a transaction, so other modules
+// (e.g. approving a customer request) can run it in the same transaction as their own change.
+export async function transitionSubscription(db, id, action, userId, input = {}) {
   const rule = actions[action]
-  const subscription = await findOrThrow(id)
+  const subscription = await findOrThrow(id, db)
   const today = businessToday()
 
   if (!rule.from.includes(subscription.status)) {
@@ -279,18 +290,22 @@ export async function runAction(id, action, user, input = {}) {
   }
   rule.check?.(subscription, today)
 
-  await prisma.$transaction(async (tx) => {
-    // matching on the old status stops two people changing it at the same moment
-    const { count } = await tx.subscription.updateMany({
-      where: { id, status: subscription.status },
-      data: { status: rule.to, ...rule.data?.(subscription, today, input) },
-    })
-    if (count === 0) throw new HttpError(409, 'Someone else just changed this subscription, reload and try again')
+  const context = action === 'resume' ? { days: await daysPausedUntil(db, id, today) } : {}
 
-    if (subscription.status !== rule.to) {
-      await recordStatusChange(tx, id, subscription.status, rule.to, user.sub, input.note)
-    }
+  // matching on the old status stops two people changing it at the same moment
+  const { count } = await db.subscription.updateMany({
+    where: { id, status: subscription.status },
+    data: { status: rule.to, ...rule.data?.(subscription, today, input, context) },
   })
+  if (count === 0) throw new HttpError(409, 'Someone else just changed this subscription, reload and try again')
+
+  if (subscription.status !== rule.to) {
+    await recordStatusChange(db, id, subscription.status, rule.to, userId, input.note)
+  }
+}
+
+export async function runAction(id, action, user, input = {}) {
+  await prisma.$transaction((tx) => transitionSubscription(tx, id, action, user.sub, input))
 
   const result = await getSubscription(id, user)
   if (action !== 'send-quotation') return result

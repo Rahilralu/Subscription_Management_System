@@ -102,6 +102,26 @@ async function submitRequest() {
   }
 }
 
+// resuming needs no approval, it just starts billing again
+const resuming = ref(false)
+
+async function resume() {
+  resuming.value = true
+  try {
+    await api(`/portal/subscriptions/${id}/resume`, { method: 'POST' })
+    toast.add({
+      title: 'Subscription resumed',
+      description: 'Your next invoice and end date moved back by the days you were paused.',
+      color: 'success',
+    })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not resume', description: apiErrorMessage(err), color: 'error' })
+  } finally {
+    resuming.value = false
+  }
+}
+
 // lifecycle shown as a stepper; PAUSED sits on the Active step and DRAFT has not reached the customer yet
 const steps = ['Quotation', 'Confirmed', 'Active', 'Closed']
 const stepIndex = computed(() => ({ QUOTATION: 0, CONFIRMED: 1, ACTIVE: 2, PAUSED: 2, CLOSED: 3 } as Record<string, number>)[sub.value?.status ?? ''] ?? 0)
@@ -156,11 +176,17 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
               <h3 class="font-semibold text-highlighted">Need a change?</h3>
               <p class="text-sm text-muted">
                 <template v-if="pendingRequest">Your request to {{ requestLabel(pendingRequest).toLowerCase() }} is waiting for review.</template>
+                <template v-else-if="sub.status === 'PAUSED'">
+                  Your subscription is paused and you are not being invoiced. When you resume, your next invoice and end date move back by the days you were paused.
+                </template>
                 <template v-else-if="sub.status !== 'ACTIVE'">Changes can be requested while the subscription is active.</template>
                 <template v-else>Our team reviews every request.</template>
               </p>
             </div>
             <div class="flex gap-2">
+              <UButton v-if="sub.status === 'PAUSED'" icon="i-lucide-play" :loading="resuming" @click="resume">
+                Resume subscription
+              </UButton>
               <UButton v-if="sub.plan.pausable" icon="i-lucide-pause" color="neutral" variant="outline" :disabled="!canRequest" @click="startRequest('PAUSE')">
                 Request pause
               </UButton>
