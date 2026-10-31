@@ -1,5 +1,6 @@
 <script setup lang="ts">
-const props = defineProps<{ status: string }>()
+// overdue replaces the shown status, for confirmed invoices that are past their due date
+const props = defineProps<{ status: string, overdue?: boolean }>()
 
 type Color = 'neutral' | 'info' | 'primary' | 'success' | 'warning' | 'error'
 
@@ -19,9 +20,10 @@ const colors: Record<string, Color> = {
   REJECTED: 'error',
 }
 
-const label = computed(() => props.status.charAt(0) + props.status.slice(1).toLowerCase())
+const shown = computed(() => (props.overdue ? 'OVERDUE' : props.status))
+const label = computed(() => shown.value.charAt(0) + shown.value.slice(1).toLowerCase())
 </script>
 
 <template>
-  <UBadge :color="colors[status] ?? 'neutral'" variant="subtle">{{ label }}</UBadge>
+  <UBadge :color="colors[shown] ?? 'neutral'" variant="subtle">{{ label }}</UBadge>
 </template>
