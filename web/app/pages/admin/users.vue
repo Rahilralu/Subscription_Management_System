@@ -40,8 +40,7 @@ const { data: users, status, refresh } = await useAsyncData(
 )
 
 const columns: TableColumn<User>[] = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'email', header: 'Email' },
+  { accessorKey: 'name', header: 'User' },
   { accessorKey: 'role', header: 'Role' },
   { accessorKey: 'createdAt', header: 'Added' },
   { accessorKey: 'active', header: 'Active' },
@@ -108,9 +107,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     </div>
 
     <UTable :data="users" :columns="columns" :loading="status === 'pending'">
+      <template #name-cell="{ row }">
+        <div class="flex items-center gap-3">
+          <UAvatar :alt="row.original.name" size="md" />
+          <div class="min-w-0">
+            <p class="truncate font-medium text-highlighted">{{ row.original.name }}</p>
+            <p class="truncate text-xs text-muted">{{ row.original.email }}</p>
+          </div>
+        </div>
+      </template>
       <template #role-cell="{ row }">
-        <UBadge :color="row.original.role === 'ADMIN' ? 'primary' : 'neutral'" variant="subtle">
-          {{ row.original.role.toLowerCase() }}
+        <UBadge :color="row.original.role === 'ADMIN' ? 'primary' : row.original.role === 'STAFF' ? 'info' : 'neutral'" variant="subtle">
+          {{ titleCase(row.original.role) }}
         </UBadge>
       </template>
       <template #createdAt-cell="{ row }">{{ formatDate(row.original.createdAt) }}</template>
@@ -119,6 +127,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <span v-if="row.original.role === 'CUSTOMER'" class="text-muted text-sm">—</span>
         <USwitch
           v-else
+          :label="row.original.active ? 'Active' : 'Inactive'"
           :model-value="row.original.active"
           :loading="busyId === row.original.id"
           :disabled="row.original.id === auth.user?.id"

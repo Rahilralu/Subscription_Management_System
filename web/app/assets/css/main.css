@@ -1,2 +1,131 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/* fonts are bundled from npm so the app keeps working offline */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@theme static {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* brand: indigo-violet. 500 is the anchor (white text on it is 5:1), 400 is used for solid fills in dark mode */
+  --color-brand-50: #f2f2ff;
+  --color-brand-100: #e8e8ff;
+  --color-brand-200: #d3d4ff;
+  --color-brand-300: #b4b6fd;
+  --color-brand-400: #8f90f9;
+  --color-brand-500: #5b5bf0;
+  --color-brand-600: #4a45dc;
+  --color-brand-700: #3d38b8;
+  --color-brand-800: #342f93;
+  --color-brand-900: #2d2a75;
+  --color-brand-950: #1b1a49;
+}
+
+:root {
+  --ui-radius: 0.5rem;
+  --ui-container: 90rem;
+
+  /* page canvas sits behind the white cards so surfaces read as raised */
+  --surface-page: #f6f7fb;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lift: 0 4px 12px rgb(16 24 40 / 0.08), 0 2px 4px rgb(16 24 40 / 0.04);
+}
+
+.dark {
+  --surface-page: #0b0c11;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-lift: 0 6px 16px rgb(0 0 0 / 0.4);
+}
+
+body {
+  background: var(--surface-page);
+  font-feature-settings: "cv11", "ss01"; /* single-storey a, open digits */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* money and counts line up in columns */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* soft brand glow used behind hero areas */
+.brand-gradient {
+  background:
+    radial-gradient(60rem 30rem at 0% 0%, rgb(143 144 249 / 0.55), transparent 60%),
+    radial-gradient(50rem 30rem at 100% 100%, rgb(91 91 240 / 0.6), transparent 55%),
+    linear-gradient(135deg, var(--color-brand-700), var(--color-brand-900) 60%, var(--color-brand-950));
+}
+
+/* route change fade (see page transition in nuxt.config.ts) */
+.page-enter-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active {
+    transition: none;
+  }
+  .page-enter-from {
+    transform: none;
+  }
+}
+
+/* landing page */
+html {
+  scroll-behavior: smooth;
+}
+
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(44rem 26rem at 15% -5%, rgb(143 144 249 / 0.35), transparent 65%),
+    radial-gradient(40rem 24rem at 90% 10%, rgb(217 119 6 / 0.12), transparent 65%);
+}
+
+.dark .hero-glow {
+  background:
+    radial-gradient(44rem 26rem at 15% -5%, rgb(111 113 242 / 0.28), transparent 65%),
+    radial-gradient(40rem 24rem at 90% 10%, rgb(217 119 6 / 0.10), transparent 65%);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.rise-2 {
+  animation-delay: 0.08s;
+}
+.rise-3 {
+  animation-delay: 0.16s;
+}
+.rise-4 {
+  animation-delay: 0.24s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .rise {
+    animation: none;
+  }
+}

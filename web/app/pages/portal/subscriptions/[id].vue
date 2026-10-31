@@ -102,11 +102,15 @@ async function submitRequest() {
   }
 }
 
+// lifecycle shown as a stepper; PAUSED sits on the Active step and DRAFT has not reached the customer yet
+const steps = ['Quotation', 'Confirmed', 'Active', 'Closed']
+const stepIndex = computed(() => ({ QUOTATION: 0, CONFIRMED: 1, ACTIVE: 2, PAUSED: 2, CLOSED: 3 } as Record<string, number>)[sub.value?.status ?? ''] ?? 0)
+
 const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change plan to ${r.plan?.name ?? '—'}`)
 </script>
 
 <template>
-  <AppPage :title="sub ? `${sub.plan.name} · ${sub.number}` : 'Subscription'">
+  <AppPage :title="sub ? sub.plan.name : 'Subscription'">
     <template #actions>
       <UButton to="/portal" color="neutral" variant="ghost" icon="i-lucide-arrow-left">Back</UButton>
     </template>
@@ -114,38 +118,50 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
     <UAlert v-if="error" color="error" variant="subtle" title="Subscription not found" />
 
     <div v-else-if="sub" class="space-y-6">
-      <div class="grid gap-4 md:grid-cols-4">
-        <UCard>
-          <p class="text-sm text-muted">Status</p>
-          <StatusBadge :status="sub.status" class="mt-1" />
-        </UCard>
-        <UCard>
-          <p class="text-sm text-muted">Recurring total (before tax)</p>
-          <p class="text-lg font-semibold">{{ formatMoney(sub.recurringTotal) }}</p>
-        </UCard>
-        <UCard>
-          <p class="text-sm text-muted">Next invoice</p>
-          <p class="text-lg font-semibold">{{ formatDate(sub.nextInvoiceDate) }}</p>
-        </UCard>
-        <UCard>
-          <p class="text-sm text-muted">Expires</p>
-          <p class="text-lg font-semibold">{{ formatDate(sub.expiryDate) }}</p>
-        </UCard>
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="text-2xl font-semibold tracking-tight text-highlighted">{{ sub.plan.name }}</h2>
+        <StatusBadge :status="sub.status" />
+        <span class="font-mono text-sm text-muted">{{ sub.number }}</span>
+      </div>
+
+      <UCard>
+        <ol class="flex items-start" aria-label="Subscription progress">
+          <li v-for="(label, i) in steps" :key="label" class="relative flex flex-1 flex-col items-center text-center last:flex-none sm:last:flex-1">
+            <div v-if="i < steps.length - 1" class="absolute left-1/2 top-4 h-0.5 w-full -translate-y-1/2" :class="i < stepIndex ? 'bg-primary' : 'bg-accented'" aria-hidden="true" />
+            <span
+              class="relative z-10 grid size-8 place-items-center rounded-full text-xs font-semibold ring-4 ring-default"
+              :class="i < stepIndex ? 'bg-primary text-white' : i === stepIndex ? (sub.status === 'PAUSED' ? 'bg-warning text-white' : sub.status === 'CLOSED' ? 'bg-accented text-default' : 'bg-primary text-white') : 'bg-accented text-muted'"
+              :aria-current="i === stepIndex ? 'step' : undefined"
+            >
+              <UIcon v-if="i < stepIndex || (i === stepIndex && sub.status === 'CLOSED')" name="i-lucide-check" class="size-4" />
+              <UIcon v-else-if="i === stepIndex && sub.status === 'PAUSED'" name="i-lucide-pause" class="size-4" />
+              <template v-else>{{ i + 1 }}</template>
+            </span>
+            <span class="mt-2 text-xs sm:text-sm" :class="i === stepIndex ? 'font-medium text-highlighted' : 'text-muted'">{{ label }}</span>
+          </li>
+        </ol>
+      </UCard>
+
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Recurring total" icon="i-lucide-wallet" :value="formatMoney(sub.recurringTotal)" hint="Per billing period, before tax" />
+        <StatTile label="Next invoice" icon="i-lucide-calendar-clock" :value="formatDate(sub.nextInvoiceDate)" :hint="`Payment terms: ${sub.paymentTermDays} days`" />
+        <StatTile label="Started" icon="i-lucide-calendar-check" :value="formatDate(sub.startDate)" />
+        <StatTile label="Expires" icon="i-lucide-calendar-x" :value="formatDate(sub.expiryDate)" :hint="sub.expiryDate ? undefined : 'Renews until you close it'" />
       </div>
 
       <UCard>
         <template #header>
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="font-semibold">Need a change?</h2>
+            <div>
+              <h3 class="font-semibold text-highlighted">Need a change?</h3>
+              <p class="text-sm text-muted">
+                <template v-if="pendingRequest">Your request to {{ requestLabel(pendingRequest).toLowerCase() }} is waiting for review.</template>
+                <template v-else-if="sub.status !== 'ACTIVE'">Changes can be requested while the subscription is active.</template>
+                <template v-else>Our team reviews every request.</template>
+              </p>
+            </div>
             <div class="flex gap-2">
-              <UButton
-                v-if="sub.plan.pausable"
-                icon="i-lucide-pause"
-                color="neutral"
-                variant="outline"
-                :disabled="!canRequest"
-                @click="startRequest('PAUSE')"
-              >
+              <UButton v-if="sub.plan.pausable" icon="i-lucide-pause" color="neutral" variant="outline" :disabled="!canRequest" @click="startRequest('PAUSE')">
                 Request pause
               </UButton>
               <UButton icon="i-lucide-circle-arrow-up" :disabled="!canRequest" @click="startRequest('UPGRADE')">
@@ -155,52 +171,44 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
           </div>
         </template>
 
-        <p v-if="pendingRequest" class="text-sm">
-          Your request to <strong>{{ requestLabel(pendingRequest).toLowerCase() }}</strong> is waiting for review.
-        </p>
-        <p v-else-if="sub.status !== 'ACTIVE'" class="text-sm text-muted">
-          Changes can be requested while the subscription is active.
-        </p>
-        <p v-else class="text-sm text-muted">
-          Ask to pause{{ sub.plan.pausable ? '' : ' (not available on this plan)' }} or move to another plan. Our team
-          reviews every request.
-        </p>
-
-        <ul v-if="sub.requests.length" class="mt-4 divide-y divide-default">
-          <li v-for="r in sub.requests" :key="r.id" class="py-2 flex items-center justify-between gap-2 text-sm">
-            <div>
-              <p>{{ requestLabel(r) }}</p>
-              <p class="text-muted">
-                {{ formatDate(r.createdAt) }}<template v-if="r.decisionNote"> · {{ r.decisionNote }}</template>
-              </p>
+        <ul v-if="sub.requests.length" class="-my-1 divide-y divide-default">
+          <li v-for="r in sub.requests" :key="r.id" class="flex items-center justify-between gap-3 py-3 text-sm">
+            <div class="flex min-w-0 items-center gap-3">
+              <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-elevated text-muted">
+                <UIcon :name="r.type === 'PAUSE' ? 'i-lucide-pause' : 'i-lucide-circle-arrow-up'" class="size-4" />
+              </span>
+              <div class="min-w-0">
+                <p class="font-medium text-highlighted">{{ requestLabel(r) }}</p>
+                <p class="truncate text-xs text-muted">{{ formatDate(r.createdAt) }}<template v-if="r.decisionNote"> · {{ r.decisionNote }}</template></p>
+              </div>
             </div>
             <StatusBadge :status="r.status" />
           </li>
         </ul>
+        <p v-else class="text-sm text-muted">No requests yet.</p>
       </UCard>
 
       <UCard :ui="{ body: 'p-0 sm:p-0' }">
-        <template #header><h2 class="font-semibold">Products</h2></template>
+        <template #header><h3 class="font-semibold text-highlighted">Products</h3></template>
         <UTable :data="sub.lines" :columns="columns">
           <template #product-cell="{ row }">
-            {{ row.original.product.name }}
-            <span v-if="row.original.variant" class="text-muted">
-              ({{ row.original.variant.attribute }}: {{ row.original.variant.value }})
-            </span>
+            <span class="font-medium text-highlighted">{{ row.original.product.name }}</span>
+            <span v-if="row.original.variant" class="text-muted"> · {{ row.original.variant.attribute }}: {{ row.original.variant.value }}</span>
           </template>
-          <template #unitPrice-cell="{ row }">{{ formatMoney(row.original.unitPrice) }}</template>
+          <template #unitPrice-cell="{ row }"><span class="tabular-nums">{{ formatMoney(row.original.unitPrice) }}</span></template>
           <template #amount-cell="{ row }">
-            {{ formatMoney(Number(row.original.unitPrice) * row.original.quantity) }}
+            <span class="tabular-nums">{{ formatMoney(Number(row.original.unitPrice) * row.original.quantity) }}</span>
           </template>
         </UTable>
       </UCard>
 
       <UCard>
-        <template #header><h2 class="font-semibold">History</h2></template>
-        <ol class="space-y-2 text-sm">
-          <li v-for="(h, i) in sub.history" :key="i" class="flex items-center gap-2">
+        <template #header><h3 class="font-semibold text-highlighted">History</h3></template>
+        <ol class="relative space-y-5 border-s border-default ps-6">
+          <li v-for="(h, i) in sub.history" :key="i" class="relative">
+            <span class="absolute -start-[31px] top-0.5 size-3 rounded-full bg-primary ring-4 ring-default" aria-hidden="true" />
             <StatusBadge :status="h.toStatus" />
-            <span class="text-muted">{{ formatDate(h.createdAt) }}</span>
+            <p class="mt-1 text-xs text-muted">{{ formatDate(h.createdAt) }}</p>
           </li>
         </ol>
       </UCard>
@@ -218,11 +226,9 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
         </div>
       </template>
       <template #footer>
-        <div class="flex justify-end gap-2 w-full">
+        <div class="flex w-full justify-end gap-2">
           <UButton color="neutral" variant="ghost" @click="open = false">Cancel</UButton>
-          <UButton :loading="saving" :disabled="requestType === 'UPGRADE' && !planId" @click="submitRequest">
-            Send request
-          </UButton>
+          <UButton :loading="saving" :disabled="requestType === 'UPGRADE' && !planId" @click="submitRequest">Send request</UButton>
         </div>
       </template>
     </UModal>

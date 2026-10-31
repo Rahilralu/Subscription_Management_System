@@ -84,15 +84,23 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
 
     <UTable :data="requests" :columns="columns" :loading="status === 'pending'">
       <template #customer-cell="{ row }">
-        <p class="font-medium">{{ row.original.customer.name }}</p>
-        <p class="text-xs text-muted">{{ row.original.customer.email }}</p>
+        <div class="flex items-center gap-3">
+          <UAvatar :alt="row.original.customer.name" size="md" />
+          <div class="min-w-0">
+            <p class="truncate font-medium text-highlighted">{{ row.original.customer.name }}</p>
+            <p class="truncate text-xs text-muted">{{ row.original.customer.email }}</p>
+          </div>
+        </div>
       </template>
       <template #subscription-cell="{ row }">
         <p>{{ row.original.subscription.number }}</p>
         <p class="text-xs text-muted">{{ row.original.subscription.plan.name }}</p>
       </template>
       <template #request-cell="{ row }">
-        <p>{{ requestLabel(row.original) }}</p>
+        <p class="flex items-center gap-1.5 font-medium text-highlighted">
+          <UIcon :name="row.original.type === 'PAUSE' ? 'i-lucide-pause' : 'i-lucide-circle-arrow-up'" class="size-4 text-muted" />
+          {{ requestLabel(row.original) }}
+        </p>
         <p v-if="row.original.note" class="text-xs text-muted max-w-xs truncate">"{{ row.original.note }}"</p>
       </template>
       <template #createdAt-cell="{ row }">{{ formatDate(row.original.createdAt) }}</template>
@@ -107,7 +115,12 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
         </div>
       </template>
       <template #empty>
-        <p class="text-muted text-sm py-6 text-center">No {{ filter.toLowerCase() }} requests.</p>
+        <UEmpty
+          variant="naked"
+          icon="i-lucide-inbox"
+          :title="filter === 'PENDING' ? 'You are all caught up' : `No ${filter.toLowerCase()} requests`"
+          :description="filter === 'PENDING' ? 'New pause and plan-change requests from customers will show up here.' : 'Decisions you make on requests are listed here.'"
+        />
       </template>
     </UTable>
 

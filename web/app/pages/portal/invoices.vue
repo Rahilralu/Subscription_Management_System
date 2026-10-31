@@ -24,25 +24,26 @@ const filterOptions = [
   { label: 'Paid', value: 'PAID' },
 ]
 
-const { data: invoices, status } = await useAsyncData(
+// a customer has few invoices, so fetch them all once and filter in the page
+const { data: all, status } = await useAsyncData(
   'portal-invoices',
-  () => {
-    const query = {
-      ALL: {},
-      OUTSTANDING: { status: 'CONFIRMED' },
-      OVERDUE: { overdue: 'true' },
-      PAID: { status: 'PAID' },
-    }[filter.value]
-    return api<{ data: Invoice[] }>('/portal/invoices', { query }).then((res) => res.data)
-  },
-  { watch: [filter], default: () => [] },
+  () => api<{ data: Invoice[] }>('/portal/invoices').then((res) => res.data),
+  { default: () => [] },
 )
 
-const outstanding = computed(() =>
-  invoices.value
-    .filter((i) => i.status === 'CONFIRMED')
-    .reduce((sum, i) => sum + Number(i.total) - Number(i.amountPaid), 0),
-)
+const invoices = computed(() => {
+  if (filter.value === 'OUTSTANDING') return all.value.filter((i) => i.status === 'CONFIRMED')
+  if (filter.value === 'OVERDUE') return all.value.filter((i) => i.overdue)
+  if (filter.value === 'PAID') return all.value.filter((i) => i.status === 'PAID')
+  return all.value
+})
+
+const balance = (i: Invoice) => Number(i.total) - Number(i.amountPaid)
+const outstanding = computed(() => all.value.filter((i) => i.status === 'CONFIRMED').reduce((sum, i) => sum + balance(i), 0))
+const overdue = computed(() => all.value.filter((i) => i.overdue))
+const overdueAmount = computed(() => overdue.value.reduce((sum, i) => sum + balance(i), 0))
+const paidCount = computed(() => all.value.filter((i) => i.status === 'PAID').length)
+const paidTotal = computed(() => all.value.reduce((sum, i) => sum + Number(i.amountPaid), 0))
 
 const columns: TableColumn<Invoice>[] = [
   { accessorKey: 'number', header: 'Invoice' },
@@ -80,43 +81,35 @@ async function downloadPdf(invoice: Invoice) {
 
 <template>
   <AppPage title="My invoices">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-      <UTabs v-model="filter" :items="filterOptions" :content="false" size="sm" />
-      <p v-if="filter !== 'PAID'" class="text-sm">
-        Outstanding: <span class="font-semibold">{{ formatMoney(outstanding) }}</span>
-      </p>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <StatTile label="Outstanding" icon="i-lucide-hourglass" :tone="outstanding ? 'warning' : 'success'" :loading="status === 'pending'" :value="formatMoney(outstanding)" :hint="outstanding ? 'Across unpaid invoices' : 'You are all paid up'" />
+      <StatTile label="Overdue" :icon="overdue.length ? 'i-lucide-clock-alert' : 'i-lucide-circle-check'" :tone="overdue.length ? 'error' : 'success'" :loading="status === 'pending'" :value="formatMoney(overdueAmount)" :hint="overdue.length ? `${overdue.length} invoice${overdue.length === 1 ? '' : 's'} past due` : 'Nothing overdue'" />
+      <StatTile label="Paid to date" icon="i-lucide-wallet" tone="success" :loading="status === 'pending'" :value="formatMoney(paidTotal)" :hint="`${paidCount} ${paidCount === 1 ? 'invoice' : 'invoices'} settled`" />
     </div>
+
+    <UTabs v-model="filter" :items="filterOptions" :content="false" size="sm" class="w-fit" />
 
     <UTable :data="invoices" :columns="columns" :loading="status === 'pending'">
       <template #number-cell="{ row }">
-        <p class="font-medium">{{ row.original.number }}</p>
-        <p class="text-xs text-muted">{{ row.original.subscription.number }}</p>
+        <p class="font-medium text-highlighted">{{ row.original.number }}</p>
+        <p class="font-mono text-xs text-muted">{{ row.original.subscription.number }}</p>
       </template>
       <template #issueDate-cell="{ row }">{{ formatDate(row.original.issueDate) }}</template>
       <template #dueDate-cell="{ row }">
-        <span :class="{ 'text-error font-medium': row.original.overdue }">{{ formatDate(row.original.dueDate) }}</span>
+        <span :class="{ 'font-medium text-error': row.original.overdue }">{{ formatDate(row.original.dueDate) }}</span>
       </template>
-      <template #total-cell="{ row }">{{ formatMoney(row.original.total) }}</template>
-      <template #balance-cell="{ row }">
-        {{ formatMoney(Number(row.original.total) - Number(row.original.amountPaid)) }}
-      </template>
+      <template #total-cell="{ row }"><span class="tabular-nums">{{ formatMoney(row.original.total) }}</span></template>
+      <template #balance-cell="{ row }"><span class="tabular-nums">{{ formatMoney(balance(row.original)) }}</span></template>
       <template #status-cell="{ row }">
-        <StatusBadge :status="row.original.overdue ? 'OVERDUE' : row.original.status" />
+        <StatusBadge :status="row.original.status" :overdue="row.original.overdue" />
       </template>
       <template #actions-cell="{ row }">
-        <UButton
-          icon="i-lucide-download"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          :loading="downloading === row.original.id"
-          @click="downloadPdf(row.original)"
-        >
+        <UButton icon="i-lucide-download" color="neutral" variant="ghost" size="sm" :loading="downloading === row.original.id" @click="downloadPdf(row.original)">
           PDF
         </UButton>
       </template>
       <template #empty>
-        <p class="text-muted text-sm py-6 text-center">No invoices here.</p>
+        <p class="py-8 text-center text-sm text-muted">No invoices here.</p>
       </template>
     </UTable>
   </AppPage>
