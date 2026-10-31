@@ -40,11 +40,17 @@ async function priceCart({ planId, lines }) {
     product: productById.get(row.productId),
     variant: row.variantId ? variantById.get(row.variantId) : null,
   }))
-  const pricing = await priceLines(prisma, priceable, businessToday())
+  const pricing = await priceLines(prisma, priceable, plan, businessToday())
+
+  // The plan's own price comes back as a line without a product. The cart lists only the products it
+  // was given (it matches them up by position) and shows the plan price separately.
+  const planPrice = pricing.lines.find((line) => line.productId === null)
+  const productLines = pricing.lines.filter((line) => line.productId !== null)
 
   const quote = {
     plan: { id: plan.id, name: plan.name, billingPeriod: plan.billingPeriod, minQuantity: plan.minQuantity },
-    lines: pricing.lines.map((line, i) => ({
+    planPrice: planPrice ? planPrice.amount : null,
+    lines: productLines.map((line, i) => ({
       productId: line.productId,
       variantId: priceable[i].variantId,
       name: priceable[i].product.name,

@@ -149,6 +149,10 @@ async function requestQuotation() {
               <USkeleton v-for="n in 4" :key="n" class="h-4 w-full" />
             </div>
             <template v-else-if="quote">
+              <p v-if="quote.planPrice" class="mb-3 flex justify-between text-sm">
+                <span class="text-muted">{{ quote.plan.name }} plan price</span>
+                <span class="tabular-nums">{{ formatMoney(quote.planPrice) }}</span>
+              </p>
               <TotalsBlock :subtotal="quote.subtotal" :discount-total="quote.discountTotal" :tax-total="quote.taxTotal" :total="quote.total" />
               <p class="mt-2 text-right text-xs text-muted">
                 Per {{ periodLabel[quote.plan.billingPeriod] ?? quote.plan.billingPeriod }}. Discounts apply automatically.

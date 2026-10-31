@@ -32,6 +32,7 @@ const portalLinks = computed<NavigationMenuItem[]>(() => [
   { label: 'Account', type: 'label' },
   { label: 'My subscriptions', icon: 'i-lucide-repeat', to: '/portal', exact: true },
   { label: 'My invoices', icon: 'i-lucide-receipt', to: '/portal/invoices' },
+  { label: 'Shop', icon: 'i-lucide-store', to: '/portal/shop' },
   { label: 'My cart', icon: 'i-lucide-shopping-cart', to: '/portal/cart', badge: cart.count || undefined },
 ])
 

@@ -37,6 +37,8 @@ export interface QuoteLine {
 // Prices always come from the server; the browser never calculates money.
 export interface Quote {
   plan: { id: number, name: string, billingPeriod: string, minQuantity: number }
+  // the plan's own price, charged on every invoice on top of the products; null when the plan is free
+  planPrice: string | null
   lines: QuoteLine[]
   subtotal: string
   discountTotal: string
