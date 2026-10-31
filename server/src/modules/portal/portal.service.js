@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js'
 import { HttpError } from '../../lib/http-error.js'
 import { logAudit } from '../../lib/audit.js'
 import { today } from '../../lib/dates.js'
+import { transitionSubscription } from '../subscriptions/subscriptions.service.js'
 
 // Every query here filters by customerId from the JWT. A record that belongs to someone else is a 404,
 // so the response doesn't reveal that it exists.
@@ -105,6 +106,21 @@ export async function createRequest(customerId, userId, subscriptionId, { type, 
     await logAudit(userId, 'request.create', 'SubscriptionRequest', request.id, { type, subscriptionId, planId }, tx)
     return request
   })
+}
+
+// Customers can resume on their own: it only restarts billing, so it needs no approval.
+export async function resumeSubscription(customerId, userId, subscriptionId) {
+  const subscription = await prisma.subscription.findFirst({
+    where: { id: subscriptionId, customerId, status: { not: 'DRAFT' } },
+    select: { id: true },
+  })
+  if (!subscription) throw new HttpError(404, 'Subscription not found')
+
+  await prisma.$transaction(async (tx) => {
+    await transitionSubscription(tx, subscriptionId, 'resume', userId, { note: 'Resumed by the customer' })
+    await logAudit(userId, 'subscription.resume', 'Subscription', subscriptionId, undefined, tx)
+  })
+  return getSubscription(customerId, subscriptionId)
 }
 
 // plans a customer can ask to move to

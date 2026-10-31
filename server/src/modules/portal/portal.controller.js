@@ -40,6 +40,10 @@ export async function createRequest(req, res) {
   res.status(201).json({ data })
 }
 
+export async function resume(req, res) {
+  res.json({ data: await portalService.resumeSubscription(customerIdOf(req), req.user.sub, req.valid.params.id) })
+}
+
 export async function plans(req, res) {
   res.json({ data: await portalService.listPlans() })
 }

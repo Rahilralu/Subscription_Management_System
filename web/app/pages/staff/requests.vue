@@ -63,7 +63,11 @@ async function submit() {
     })
     toast.add({
       title: approving.value ? 'Request approved' : 'Request rejected',
-      description: approving.value ? `Apply the change on ${current.value.subscription.number}.` : undefined,
+      description: !approving.value
+        ? undefined
+        : current.value.type === 'PAUSE'
+          ? `${current.value.subscription.number} is now paused.`
+          : `Apply the plan change on ${current.value.subscription.number}.`,
       color: 'success',
     })
     open.value = false
