@@ -51,6 +51,7 @@ async function requestQuotation() {
     created.value = res.data
     cart.clear()
     notes.value = ''
+    await refreshNuxtData('portal-quotations')
   } catch (err) {
     toast.add({ title: 'Could not send your request', description: apiErrorMessage(err), color: 'error' })
   } finally {
@@ -68,11 +69,12 @@ async function requestQuotation() {
           <div>
             <p class="font-semibold">Quotation {{ created.number }} requested</p>
             <p class="text-sm text-muted">
-              Our team will review it and get back to you. You can follow it under "My subscriptions"; nothing is charged yet.
+              Our team will review it and get back to you. You can follow it any time under "My quotations"; nothing is charged yet.
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <UButton :to="`/portal/subscriptions/${created.id}`" icon="i-lucide-file-text">View quotation</UButton>
+            <UButton to="/portal/quotations" icon="i-lucide-file-text">My quotations</UButton>
+            <UButton :to="`/portal/subscriptions/${created.id}`" color="neutral" variant="outline" icon="i-lucide-eye">View this one</UButton>
             <UButton color="neutral" variant="outline" icon="i-lucide-sparkles" @click="created = null; chat.show()">Ask the assistant</UButton>
           </div>
         </div>
@@ -149,6 +151,10 @@ async function requestQuotation() {
               <USkeleton v-for="n in 4" :key="n" class="h-4 w-full" />
             </div>
             <template v-else-if="quote">
+              <p v-if="quote.planPrice" class="mb-3 flex justify-between text-sm">
+                <span class="text-muted">{{ quote.plan.name }} plan price</span>
+                <span class="tabular-nums">{{ formatMoney(quote.planPrice) }}</span>
+              </p>
               <TotalsBlock :subtotal="quote.subtotal" :discount-total="quote.discountTotal" :tax-total="quote.taxTotal" :total="quote.total" />
               <p class="mt-2 text-right text-xs text-muted">
                 Per {{ periodLabel[quote.plan.billingPeriod] ?? quote.plan.billingPeriod }}. Discounts apply automatically.

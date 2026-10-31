@@ -10,6 +10,7 @@ import portalRoutes from './modules/portal/portal.routes.js'
 import requestsRoutes from './modules/requests/requests.routes.js'
 import customersRoutes from './modules/customers/customers.routes.js'
 import chatRoutes from './modules/chat/chat.routes.js'
+import shopRoutes from './modules/shop/shop.routes.js'
 import { notFound, errorHandler } from './middleware/error.js'
 
 export const app = express()
@@ -28,6 +29,7 @@ app.use('/api/portal', portalRoutes)
 app.use('/api/subscription-requests', requestsRoutes)
 app.use('/api/customers', customersRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/shop', shopRoutes)
 
 app.use(notFound)
 app.use(errorHandler)

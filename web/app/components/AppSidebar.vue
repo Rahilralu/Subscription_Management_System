@@ -28,10 +28,21 @@ const staffLinks: NavigationMenuItem[] = [
 
 const cart = useCartStore()
 
+// quotations waiting for the customer's answer; the same data key as the My quotations page, so it is fetched once
+const api = useApi()
+const quotations = auth.user?.role === 'CUSTOMER'
+  ? useLazyAsyncData('portal-quotations', () => api<{ data: { status: string }[] }>('/portal/subscriptions').then((res) => res.data), {
+      default: () => [] as { status: string }[],
+    })
+  : null
+const waitingQuotations = computed(() => quotations?.data.value.filter((s) => s.status === 'QUOTATION').length ?? 0)
+
 const portalLinks = computed<NavigationMenuItem[]>(() => [
   { label: 'Account', type: 'label' },
   { label: 'My subscriptions', icon: 'i-lucide-repeat', to: '/portal', exact: true },
   { label: 'My invoices', icon: 'i-lucide-receipt', to: '/portal/invoices' },
+  { label: 'Shop', icon: 'i-lucide-store', to: '/portal/shop' },
+  { label: 'My quotations', icon: 'i-lucide-file-text', to: '/portal/quotations', badge: waitingQuotations.value || undefined },
   { label: 'My cart', icon: 'i-lucide-shopping-cart', to: '/portal/cart', badge: cart.count || undefined },
 ])
 
