@@ -20,6 +20,7 @@ const staffLinks: NavigationMenuItem[] = [
   { label: 'Subscriptions', icon: 'i-lucide-repeat', to: '/staff/subscriptions' },
   { label: 'Invoices', icon: 'i-lucide-receipt', to: '/staff/invoices' },
   { label: 'Payments', icon: 'i-lucide-wallet', to: '/staff/payments' },
+  { label: 'Requests', icon: 'i-lucide-inbox', to: '/staff/requests' },
   { label: 'Customers', icon: 'i-lucide-contact', to: '/staff/customers' },
 ]
 
