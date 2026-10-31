@@ -35,6 +35,7 @@ npm run dev
 | Admin    | admin@brightloop.local | Admin@1234    |
 | Staff    | staff@brightloop.local | Staff@1234    |
 | Customer | asha@example.com       | Customer@1234 |
+| Customer | ravi@example.com       | Customer@1234 |
 
 ## Team
 
