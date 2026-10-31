@@ -3,8 +3,9 @@ import { prisma } from '../../lib/prisma.js'
 import { HttpError } from '../../lib/http-error.js'
 import { logAudit } from '../../lib/audit.js'
 import { sendMail } from '../../lib/mailer.js'
-import { escapeHtml } from '../../lib/format.js'
-import { toDateString } from '../../lib/dates.js'
+import { escapeHtml, formatMoney } from '../../lib/format.js'
+import { businessToday, toDateString } from '../../lib/dates.js'
+import { lineInclude, priceLines } from '../billing/invoice.pricing.js'
 import { changeSubscriptionPlan, transitionSubscription } from '../subscriptions/subscriptions.service.js'
 
 export function listRequests({ status }) {
@@ -73,7 +74,9 @@ async function emailDecision(id) {
       where: { id },
       include: {
         customer: { select: { name: true, email: true } },
-        subscription: { select: { number: true, nextInvoiceDate: true } },
+        subscription: {
+          select: { number: true, nextInvoiceDate: true, plan: true, lines: { include: lineInclude, orderBy: { id: 'asc' } } },
+        },
         plan: { select: { name: true } },
       },
     })
@@ -88,9 +91,14 @@ async function emailDecision(id) {
         <p>When you resume, your next invoice and end date move back by the number of days you were paused.
         You can resume any time from your account: ${env.appUrl}</p>${note}`
     } else {
-      const nextInvoice = request.subscription.nextInvoiceDate
-      outcome = `<p>You're on the <b>${escapeHtml(request.plan?.name)}</b> plan from your next invoice${nextInvoice ? ` on ${toDateString(nextInvoice)}` : ''} (${escapeHtml(request.subscription.number)}).
-        Nothing is charged or refunded for the current period.</p>${note}`
+      const { nextInvoiceDate, plan, lines } = request.subscription
+      // the new amount is a courtesy, so a problem working it out must not stop the email
+      const pricing = await priceLines(prisma, lines, plan, businessToday()).catch(() => null)
+      const amount = pricing
+        ? `<p>Each invoice will then be <b>${formatMoney(pricing.total)}</b> including tax, every ${plan.billingPeriod.toLowerCase()} period.</p>`
+        : ''
+      outcome = `<p>You're on the <b>${escapeHtml(request.plan?.name)}</b> plan from your next invoice${nextInvoiceDate ? ` on ${toDateString(nextInvoiceDate)}` : ''} (${escapeHtml(request.subscription.number)}).
+        Nothing is charged or refunded for the current period.</p>${amount}${note}`
     }
 
     await sendMail({

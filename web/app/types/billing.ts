@@ -12,6 +12,7 @@ export interface ListResponse<T> {
 export interface Plan {
   id: number
   name: string
+  price: string
   billingPeriod: BillingPeriod
   minQuantity: number
   pausable: boolean

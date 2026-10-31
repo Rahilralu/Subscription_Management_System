@@ -46,7 +46,7 @@ async function billNextPeriod(subscriptionId, today) {
     }
     const periodEnd = expiry && expiry < naturalEnd ? expiry : naturalEnd
 
-    const pricing = await priceLines(tx, subscription.lines, today)
+    const pricing = await priceLines(tx, subscription.lines, subscription.plan, today)
     const number = await nextNumber(tx, 'INV')
     const invoice = await tx.invoice.create({
       data: {
