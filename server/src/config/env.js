@@ -20,6 +20,8 @@ export const env = {
   openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
   chatRateLimitPerMin: Number(process.env.CHAT_RATE_LIMIT_PER_MIN ?? 20),
+  // sign-in, sign-up and password reset attempts allowed per email per minute
+  authRateLimitPerMin: Number(process.env.AUTH_RATE_LIMIT_PER_MIN ?? 10),
 
   // online payments from the customer portal: 'razorpay', 'demo' (simulated, works offline) or 'off'
   paymentGateway: process.env.PAYMENT_GATEWAY ?? (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? 'razorpay' : 'off'),
