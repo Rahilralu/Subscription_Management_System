@@ -1,4 +1,5 @@
 import express from 'express'
+import authRoutes from './modules/auth/auth.routes.js'
 import usersRoutes from './modules/users/users.routes.js'
 import catalogRoutes from './modules/catalog/catalog.routes.js'
 import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes.js'
@@ -12,6 +13,7 @@ export const app = express()
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (req, res) => res.json({ data: { ok: true } }))
+app.use('/api/auth', authRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/catalog', catalogRoutes)
 app.use('/api/subscriptions', subscriptionsRoutes)
