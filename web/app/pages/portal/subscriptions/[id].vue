@@ -102,6 +102,26 @@ async function submitRequest() {
   }
 }
 
+// resuming needs no approval, it just starts billing again
+const resuming = ref(false)
+
+async function resume() {
+  resuming.value = true
+  try {
+    await api(`/portal/subscriptions/${id}/resume`, { method: 'POST' })
+    toast.add({
+      title: 'Subscription resumed',
+      description: 'Your next invoice and end date moved back by the days you were paused.',
+      color: 'success',
+    })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Could not resume', description: apiErrorMessage(err), color: 'error' })
+  } finally {
+    resuming.value = false
+  }
+}
+
 const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change plan to ${r.plan?.name ?? '—'}`)
 </script>
 
@@ -138,6 +158,9 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="font-semibold">Need a change?</h2>
             <div class="flex gap-2">
+              <UButton v-if="sub.status === 'PAUSED'" icon="i-lucide-play" :loading="resuming" @click="resume">
+                Resume subscription
+              </UButton>
               <UButton
                 v-if="sub.plan.pausable"
                 icon="i-lucide-pause"
@@ -157,6 +180,10 @@ const requestLabel = (r: Request) => (r.type === 'PAUSE' ? 'Pause' : `Change pla
 
         <p v-if="pendingRequest" class="text-sm">
           Your request to <strong>{{ requestLabel(pendingRequest).toLowerCase() }}</strong> is waiting for review.
+        </p>
+        <p v-else-if="sub.status === 'PAUSED'" class="text-sm text-muted">
+          Your subscription is paused and you are not being invoiced. When you resume, your next invoice and end date
+          move back by the days you were paused.
         </p>
         <p v-else-if="sub.status !== 'ACTIVE'" class="text-sm text-muted">
           Changes can be requested while the subscription is active.
