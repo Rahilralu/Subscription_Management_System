@@ -51,6 +51,17 @@ enum DiscountScope {
   SUBSCRIPTION
 }
 
+enum RequestType {
+  PAUSE
+  UPGRADE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum PaymentMethod {
   CASH
   BANK_TRANSFER
@@ -71,10 +82,11 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  customer      Customer?
-  statusChanges SubscriptionStatusHistory[]
-  payments      Payment[]
-  auditLogs     AuditLog[]
+  customer        Customer?
+  statusChanges   SubscriptionStatusHistory[]
+  payments        Payment[]
+  auditLogs       AuditLog[]
+  decidedRequests SubscriptionRequest[]
 }
 
 model Customer {
@@ -86,9 +98,10 @@ model Customer {
   userId    Int?     @unique
   createdAt DateTime @default(now())
 
-  user          User?          @relation(fields: [userId], references: [id])
+  user          User?                 @relation(fields: [userId], references: [id])
   subscriptions Subscription[]
   invoices      Invoice[]
+  requests      SubscriptionRequest[]
 }
 
 model Product {
@@ -152,6 +165,7 @@ model Plan {
 
   subscriptions Subscription[]
   templates     QuotationTemplate[]
+  requests      SubscriptionRequest[]
 }
 
 model Discount {
@@ -219,6 +233,7 @@ model Subscription {
   lines    SubscriptionLine[]
   invoices Invoice[]
   history  SubscriptionStatusHistory[]
+  requests SubscriptionRequest[]
 
   @@index([status])
   @@index([customerId])
@@ -250,6 +265,30 @@ model SubscriptionStatusHistory {
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   changedBy    User?        @relation(fields: [changedById], references: [id])
 
+  @@index([subscriptionId])
+}
+
+// Customer asks to pause or change plan from the portal; staff approve or reject.
+model SubscriptionRequest {
+  id             Int           @id @default(autoincrement())
+  subscriptionId Int
+  customerId     Int
+  type           RequestType
+  planId         Int?
+  note           String?
+  status         RequestStatus @default(PENDING)
+  decidedById    Int?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime      @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  plan         Plan?        @relation(fields: [planId], references: [id])
+  decidedBy    User?        @relation(fields: [decidedById], references: [id])
+
+  @@index([status])
+  @@index([customerId])
   @@index([subscriptionId])
 }
 

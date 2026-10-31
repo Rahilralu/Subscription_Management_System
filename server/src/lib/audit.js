@@ -1,14 +1,7 @@
 import { prisma } from './prisma.js'
 
-// Record who did what. Pass `tx` when inside a transaction so the log rolls back with the change.
-// usage: await audit(tx, { userId: req.user.sub, action: 'payment.recorded', entity: 'Invoice', entityId: 12, data: {...} })
-export function audit(tx, { userId = null, action, entity, entityId = null, data }) {
-  return (tx ?? prisma).auditLog.create({
-    data: { userId, action, entity, entityId, data: data === undefined ? undefined : toJson(data) },
-  })
-}
-
-// Decimal / Date values are not plain JSON, so normalise them before storing
-function toJson(value) {
-  return JSON.parse(JSON.stringify(value))
+// Pass `tx` when logging inside a transaction, so the log rolls back with the change it describes.
+// action is a short verb like 'user.create', entity is the model name like 'User'.
+export function logAudit(userId, action, entity, entityId = null, data = undefined, tx = prisma) {
+  return tx.auditLog.create({ data: { userId, action, entity, entityId, data } })
 }
