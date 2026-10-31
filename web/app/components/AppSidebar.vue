@@ -12,6 +12,7 @@ const adminLinks: NavigationMenuItem[] = [
   { label: 'Discounts', icon: 'i-lucide-tag', to: '/admin/discounts' },
   { label: 'Templates', icon: 'i-lucide-file-text', to: '/admin/templates' },
   { label: 'Users', icon: 'i-lucide-users', to: '/admin/users' },
+  { label: 'Audit log', icon: 'i-lucide-scroll-text', to: '/admin/audit' },
 ]
 
 const staffLinks: NavigationMenuItem[] = [
@@ -20,6 +21,7 @@ const staffLinks: NavigationMenuItem[] = [
   { label: 'Subscriptions', icon: 'i-lucide-repeat', to: '/staff/subscriptions' },
   { label: 'Invoices', icon: 'i-lucide-receipt', to: '/staff/invoices' },
   { label: 'Payments', icon: 'i-lucide-wallet', to: '/staff/payments' },
+  { label: 'Requests', icon: 'i-lucide-inbox', to: '/staff/requests' },
   { label: 'Customers', icon: 'i-lucide-contact', to: '/staff/customers' },
 ]
 

@@ -22,13 +22,19 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => Boolean(token.value && user.value))
   const homePath = computed(() => (user.value ? homeByRole[user.value.role] : '/login'))
 
-  async function login(email: string, password: string) {
-    const res = await $fetch<{ data: { token: string, user: AuthUser } }>('/api/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    })
+  type Session = { data: { token: string, user: AuthUser } }
+
+  function setSession(res: Session) {
     token.value = res.data.token
     user.value = res.data.user
+  }
+
+  async function login(email: string, password: string) {
+    setSession(await $fetch<Session>('/api/auth/login', { method: 'POST', body: { email, password } }))
+  }
+
+  async function signup(name: string, email: string, password: string) {
+    setSession(await $fetch<Session>('/api/auth/signup', { method: 'POST', body: { name, email, password } }))
   }
 
   function logout() {
@@ -37,5 +43,5 @@ export const useAuthStore = defineStore('auth', () => {
     return navigateTo('/login')
   }
 
-  return { token, user, isLoggedIn, homePath, login, logout }
+  return { token, user, isLoggedIn, homePath, login, signup, logout }
 })

@@ -41,10 +41,19 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       </UFormField>
 
       <UFormField label="Password" name="password">
+        <template #hint>
+          <ULink to="/forgot-password" class="text-sm">Forgot password?</ULink>
+        </template>
         <UInput v-model="state.password" type="password" autocomplete="current-password" class="w-full" />
       </UFormField>
 
       <UButton type="submit" block :loading="loading">Sign in</UButton>
     </UForm>
+
+    <template #footer>
+      <p class="text-sm text-muted text-center">
+        New to Brightloop? <ULink to="/signup" class="text-primary font-medium">Create an account</ULink>
+      </p>
+    </template>
   </UCard>
 </template>

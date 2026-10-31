@@ -10,6 +10,7 @@ export const env = {
   smtpPort: Number(process.env.SMTP_PORT ?? 1025),
   mailFrom: process.env.MAIL_FROM ?? 'Brightloop Billing <billing@brightloop.local>',
   appUrl: process.env.APP_URL ?? 'http://localhost:3000',
-  // when the automatic billing run happens; set BILLING_CRON=off to disable it
-  billingCron: process.env.BILLING_CRON ?? '0 1 * * *',
+  cronEnabled: process.env.CRON_ENABLED !== 'false',
+  reminderIntervalDays: Number(process.env.REMINDER_INTERVAL_DAYS ?? 7),
+  reminderMaxCount: Number(process.env.REMINDER_MAX_COUNT ?? 3),
 }
