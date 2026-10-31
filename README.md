@@ -79,4 +79,5 @@ A daily job (09:00 server time) emails overdue customers. Each invoice is remind
 - Record a payment from an invoice page: `<RecordPaymentModal v-model:open="open" :invoice="invoice" @recorded="refresh" />` (`invoice` needs `id`, `number`, `total`, `amountPaid`, `balance`).
 - Confirming an invoice (DRAFT to CONFIRMED) is what makes it payable and eligible for reminders. Payments only update `amountPaid` and set `PAID`; they never touch other fields.
 - Write to the audit log inside your transaction: `await audit(tx, { userId: req.user.sub, action: 'invoice.confirmed', entity: 'Invoice', entityId: id, data: {...} })` from `server/src/lib/audit.js`. Admins can browse it at `/admin/audit`.
-- Dashboard MRR sums active subscription lines (`quantity x unitPrice`, falling back to the plan price) normalised to a month, before tax.
+- Every invoice charges the plan's own price once, plus the subscription's product lines (`quantity x unitPrice`). The plan price has no tax. Changing a subscription's plan therefore changes what it is billed, from the next invoice.
+- Dashboard MRR sums, for each active subscription, the plan price plus its lines, normalised to a month, before tax.

@@ -32,7 +32,8 @@ function allocate(total, weights) {
 }
 
 /**
- * lines:     [{ productId, description, quantity, unitPrice, taxes: [{ type, rate }] }]
+ * lines:     [{ productId, description, quantity, unitPrice, taxes: [{ type, rate }], planFee? }]
+ *            planFee marks the plan's own price: it is not a product, so it does not count towards a quantity minimum
  * discounts: Discount rows; eligibility (dates, usage limit, minimums) is decided here
  * Tax is charged on the price after discount. A FIXED tax is per unit.
  * total = subtotal - discountTotal + taxTotal, and every figure is the sum of its rounded line values.
@@ -59,7 +60,7 @@ export function calculateInvoice({ lines, discounts = [], today }) {
   })
 
   const subtotal = sum(rows.map((row) => row.base))
-  const totalQuantity = lines.reduce((count, line) => count + line.quantity, 0)
+  const totalQuantity = lines.reduce((count, line) => (line.planFee ? count : count + line.quantity), 0)
 
   let invoiceDiscount = ZERO
   for (const d of usable) {
