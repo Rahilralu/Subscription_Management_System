@@ -1,9 +1,5 @@
 import { z } from 'zod'
-
-const amount = z
-  .union([z.string(), z.number()])
-  .transform(String)
-  .pipe(z.string().trim().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount'))
+import { amount } from './common.schema.js'
 
 const variantSchema = z.object({
   id: z.number().int().positive().optional(),
@@ -39,8 +35,4 @@ export const productListQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   archived: z.enum(['true', 'false']).default('false'),
-})
-
-export const idParams = z.object({
-  id: z.coerce.number({ error: 'Invalid id' }).int().positive('Invalid id'),
 })
