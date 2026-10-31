@@ -22,6 +22,13 @@ async function act(action: string, doneMessage: string) {
     }
     if (action === 'send-quotation' && !res.data.emailSent) {
       toast.add({ title: 'Quotation saved, but the email could not be sent', color: 'warning' })
+    } else if (action === 'activate' && res.data.invoicesCreated?.length) {
+      const [first] = res.data.invoicesCreated
+      toast.add({
+        title: `Subscription is now active. Invoice ${first.number} was created as a draft.`,
+        description: 'Open it under Invoices and press Confirm, so the customer can see and pay it.',
+        color: 'success',
+      })
     } else {
       toast.add({ title: doneMessage, color: 'success' })
     }

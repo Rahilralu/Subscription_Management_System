@@ -76,6 +76,8 @@ export interface SubscriptionDetail {
   invoices: SubscriptionInvoice[]
   pricing: Pricing
   emailSent?: boolean
+  // set when the subscription was just activated: the invoices created for it right away
+  invoicesCreated?: { id: number, number: string, total: string }[]
 }
 
 export interface InvoiceRow {

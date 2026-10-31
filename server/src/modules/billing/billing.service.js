@@ -123,6 +123,19 @@ export async function runBilling({ date } = {}) {
   return { date: today, checked: due.length, invoices, closed: await closeExpired(today), errors }
 }
 
+// Bills one subscription for every period that is due by today. Activating a subscription uses this, so its
+// first invoice exists straight away instead of waiting for the next billing run. A subscription that
+// starts in the future has nothing due yet, and the daily run picks it up on its start date.
+export async function billDuePeriods(subscriptionId, today = businessToday()) {
+  const invoices = []
+  for (let i = 0; i < MAX_PERIODS_PER_RUN; i++) {
+    const invoice = await billNextPeriod(subscriptionId, today)
+    if (!invoice) break
+    invoices.push(invoice)
+  }
+  return invoices
+}
+
 /* ---------- invoices ---------- */
 
 export async function listInvoices(query, user) {
