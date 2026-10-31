@@ -6,6 +6,8 @@ import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes.js
 import billingRoutes from './modules/billing/billing.routes.js'
 import paymentsRoutes from './modules/payments/payments.routes.js'
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js'
+import portalRoutes from './modules/portal/portal.routes.js'
+import requestsRoutes from './modules/requests/requests.routes.js'
 import { notFound, errorHandler } from './middleware/error.js'
 
 export const app = express()
@@ -20,6 +22,8 @@ app.use('/api/subscriptions', subscriptionsRoutes)
 app.use('/api/billing', billingRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/portal', portalRoutes)
+app.use('/api/subscription-requests', requestsRoutes)
 
 app.use(notFound)
 app.use(errorHandler)
