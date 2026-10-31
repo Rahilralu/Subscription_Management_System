@@ -42,5 +42,6 @@ export const listReceivablesSchema = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
   customerId: id.optional(),
+  planId: id.optional(),
   search: z.string().trim().max(100).optional(),
 })

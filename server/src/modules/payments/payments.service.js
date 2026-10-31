@@ -165,6 +165,7 @@ export async function listReceivables(query, user) {
   const where = {
     ...stateWhere,
     ...(customerId && { customerId }),
+    ...(query.planId && { subscription: { planId: query.planId } }),
     ...((query.from || query.to) && {
       issueDate: { ...(query.from && { gte: parseDate(query.from) }), ...(query.to && { lte: parseDate(query.to) }) },
     }),
