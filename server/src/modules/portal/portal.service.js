@@ -10,8 +10,12 @@ import { transitionSubscription } from '../subscriptions/subscriptions.service.j
 
 const planSummary = { select: { id: true, name: true, billingPeriod: true, price: true, pausable: true } }
 
-function linesTotal(lines) {
-  return lines.reduce((sum, line) => sum.plus(new Prisma.Decimal(line.unitPrice).times(line.quantity)), new Prisma.Decimal(0))
+// what each invoice charges before tax: the products plus the plan's own price
+function recurringTotalOf(subscription) {
+  return subscription.lines.reduce(
+    (sum, line) => sum.plus(new Prisma.Decimal(line.unitPrice).times(line.quantity)),
+    new Prisma.Decimal(subscription.plan.price),
+  )
 }
 
 export async function listSubscriptions(customerId) {
@@ -21,7 +25,7 @@ export async function listSubscriptions(customerId) {
     include: { plan: planSummary, lines: { select: { quantity: true, unitPrice: true } } },
     orderBy: { createdAt: 'desc' },
   })
-  return subscriptions.map(({ lines, ...sub }) => ({ ...sub, recurringTotal: linesTotal(lines) }))
+  return subscriptions.map(({ lines, ...sub }) => ({ ...sub, recurringTotal: recurringTotalOf({ lines, plan: sub.plan }) }))
 }
 
 export async function getSubscription(customerId, id) {
@@ -40,7 +44,7 @@ export async function getSubscription(customerId, id) {
     },
   })
   if (!subscription) throw new HttpError(404, 'Subscription not found')
-  return { ...subscription, recurringTotal: linesTotal(subscription.lines) }
+  return { ...subscription, recurringTotal: recurringTotalOf(subscription) }
 }
 
 export async function listInvoices(customerId, { status, overdue }) {

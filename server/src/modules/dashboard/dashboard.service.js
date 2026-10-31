@@ -30,10 +30,10 @@ export async function getSummary(query) {
   const filters = subFilters(query)
 
   const [subs, revenue, invoiced, receivables, newSubs] = await Promise.all([
-    // a subscription's recurring amount is the sum of its lines, falling back to the plan price
+    // a subscription's recurring amount is the plan price plus the sum of its lines, which is what each invoice charges
     prisma.$queryRaw`
       SELECT count(*)::int AS "activeSubscriptions",
-             COALESCE(SUM(COALESCE(l.amount, p.price) * ${factorSql}), 0)::numeric(14,2) AS mrr
+             COALESCE(SUM((COALESCE(l.amount, 0) + p.price) * ${factorSql}), 0)::numeric(14,2) AS mrr
       FROM "Subscription" s
       JOIN "Plan" p ON p.id = s."planId"
       LEFT JOIN (

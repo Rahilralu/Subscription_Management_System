@@ -65,7 +65,8 @@ function lineTotal(line: FormLine) {
   const extra = product.variants.find((v) => v.id === line.variantId)?.extraPrice ?? 0
   return (Number(product.salesPrice) + Number(extra)) * (line.quantity || 0)
 }
-const estimate = computed(() => state.lines.reduce((sum, line) => sum + lineTotal(line), 0))
+// every invoice charges the plan's own price on top of the products
+const estimate = computed(() => Number(selectedPlan.value?.price ?? 0) + state.lines.reduce((sum, line) => sum + lineTotal(line), 0))
 
 function applyTemplate(id: number) {
   const template = props.options.templates.find((t) => t.id === id)
@@ -137,6 +138,7 @@ function submit() {
 
       <p v-if="selectedPlan" class="mt-4 text-sm text-muted">
         {{ selectedPlan.name }} bills {{ selectedPlan.billingPeriod.toLowerCase() }}.
+        <template v-if="Number(selectedPlan.price) > 0">The plan price of {{ formatMoney(selectedPlan.price) }} is added to every invoice.</template>
         <template v-if="selectedPlan.minQuantity > 1">Minimum quantity per product: {{ selectedPlan.minQuantity }}.</template>
       </p>
     </UCard>
@@ -174,7 +176,7 @@ function submit() {
       </div>
 
       <p class="mt-4 text-right text-sm">
-        <span class="text-muted">Estimate before tax and discounts: </span>
+        <span class="text-muted">Estimate per invoice (products + plan price), before tax and discounts: </span>
         <span class="font-semibold">{{ formatMoney(estimate) }}</span>
       </p>
     </UCard>

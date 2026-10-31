@@ -155,7 +155,7 @@ export async function getSubscription(id, user) {
   const hidden = isCustomer(user) && (subscription?.customerId !== user.customerId || subscription.status === 'DRAFT')
   if (!subscription || hidden) throw new HttpError(404, 'Subscription not found')
 
-  const pricing = await priceLines(prisma, subscription.lines, businessToday())
+  const pricing = await priceLines(prisma, subscription.lines, subscription.plan, businessToday())
   return { ...subscription, pricing }
 }
 
