@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { z } from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Product, ProductInput, Variant } from '~/types/catalog'
+import type { Product, ProductInput, Tax, Variant } from '~/types/catalog'
 
 const props = defineProps<{ product: Product | null }>()
 const open = defineModel<boolean>('open', { required: true })
@@ -58,10 +58,31 @@ function emptyProduct(): ProductInput {
 
 const state = reactive<Omit<ProductInput, 'variants'> & { variants: VariantRow[] }>({ ...emptyProduct(), variants: [] })
 
+const taxes = ref<Tax[]>([])
+const taxesLoading = ref(false)
+
+// active taxes, plus any archived ones this product still has so they stay visible and removable
+const taxItems = computed(() => {
+  const all = [...taxes.value, ...(props.product?.taxes ?? []).filter((t) => !taxes.value.some((a) => a.id === t.id))]
+  return all.map((tax) => ({ label: `${tax.name} (${formatAmount(tax.type, tax.rate)})`, value: tax.id }))
+})
+
+async function loadTaxes() {
+  taxesLoading.value = true
+  try {
+    taxes.value = (await api<{ data: Tax[] }>('/catalog/taxes')).data
+  } catch (err) {
+    toast.add({ title: 'Could not load taxes', description: apiErrorMessage(err), color: 'error' })
+  } finally {
+    taxesLoading.value = false
+  }
+}
+
 watch(open, (isOpen) => {
   if (!isOpen) return
   const input = props.product ? productToInput(props.product) : emptyProduct()
   Object.assign(state, { ...input, variants: input.variants.map(toRow) })
+  loadTaxes()
 })
 
 function addVariant() {
@@ -118,6 +139,18 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             </UInput>
           </UFormField>
         </div>
+
+        <UFormField label="Taxes" name="taxIds" help="Charged on every invoice line for this product">
+          <USelectMenu
+            v-model="state.taxIds"
+            :items="taxItems"
+            value-key="value"
+            multiple
+            :loading="taxesLoading"
+            placeholder="No taxes"
+            class="w-full"
+          />
+        </UFormField>
 
         <UFormField label="Notes" name="notes">
           <UTextarea v-model="state.notes" :rows="2" class="w-full" />

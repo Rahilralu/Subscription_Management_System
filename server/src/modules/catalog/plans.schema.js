@@ -1,11 +1,5 @@
 import { z } from 'zod'
-
-const amount = z
-  .union([z.string(), z.number()])
-  .transform(String)
-  .pipe(z.string().trim().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount'))
-
-const day = z.iso.date('Enter a valid date')
+import { amount, day, archivedQuery, toDay } from './common.schema.js'
 
 export const planSchema = z
   .object({
@@ -27,10 +21,8 @@ export const planSchema = z
   })
   .transform((plan) => ({
     ...plan,
-    startDate: new Date(plan.startDate),
-    endDate: plan.endDate ? new Date(plan.endDate) : null,
+    startDate: toDay(plan.startDate),
+    endDate: toDay(plan.endDate),
   }))
 
-export const planListQuery = z.object({
-  archived: z.enum(['true', 'false']).default('false'),
-})
+export const planListQuery = archivedQuery

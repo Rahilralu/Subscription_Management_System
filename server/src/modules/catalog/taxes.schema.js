@@ -1,9 +1,5 @@
 import { z } from 'zod'
-
-const amount = z
-  .union([z.string(), z.number()])
-  .transform(String)
-  .pipe(z.string().trim().regex(/^\d{1,10}(\.\d{1,2})?$/, 'Enter a valid amount'))
+import { amount, archivedQuery } from './common.schema.js'
 
 export const taxSchema = z
   .object({
@@ -17,6 +13,4 @@ export const taxSchema = z
     message: 'Percent must be between 0 and 100',
   })
 
-export const taxListQuery = z.object({
-  archived: z.enum(['true', 'false']).default('false'),
-})
+export const taxListQuery = archivedQuery
