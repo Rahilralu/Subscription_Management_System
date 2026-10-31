@@ -81,3 +81,17 @@ A daily job (09:00 server time) emails overdue customers. Each invoice is remind
 - Write to the audit log inside your transaction: `await audit(tx, { userId: req.user.sub, action: 'invoice.confirmed', entity: 'Invoice', entityId: id, data: {...} })` from `server/src/lib/audit.js`. Admins can browse it at `/admin/audit`.
 - Every invoice charges the plan's own price once, plus the subscription's product lines (`quantity x unitPrice`). The plan price has no tax. Changing a subscription's plan therefore changes what it is billed, from the next invoice.
 - Dashboard MRR sums, for each active subscription, the plan price plus its lines, normalised to a month, before tax.
+
+## Online payments (customer "Pay now")
+
+Customers can pay a confirmed invoice from **My invoices**. Set one of these in `server/.env`, then restart the server:
+
+| Setting | What happens |
+|---|---|
+| *(nothing)* | Off. No Pay now button |
+| `PAYMENT_GATEWAY=demo` | Simulated payment, works offline. A dialog says no real money moves; the invoice is marked paid |
+| `RAZORPAY_KEY_ID=rzp_test_...` and `RAZORPAY_KEY_SECRET=...` | Razorpay Checkout in test mode (needs internet). Get test keys at dashboard.razorpay.com, Test Mode, Account & Settings, API Keys |
+
+Never commit the keys. Test payments: UPI `success@razorpay`, or card `4111 1111 1111 1111` with any future expiry and any CVV.
+
+The server re-checks every payment (Razorpay signature, order belongs to the invoice, payment captured) and records it through the normal payment rules, so it shows on the staff Payments page and the audit log. Sending the same payment twice does not record it twice.

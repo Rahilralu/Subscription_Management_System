@@ -14,3 +14,10 @@ export const createRequestSchema = z
     note: z.string().trim().max(500).optional(),
   })
   .refine((data) => data.type !== 'UPGRADE' || data.planId, { message: 'Choose the plan to move to', path: ['planId'] })
+
+// what Razorpay Checkout hands back after a successful payment; ignored by the demo gateway
+export const confirmPaymentSchema = z.object({
+  orderId: z.string().trim().max(100).optional(),
+  paymentId: z.string().trim().max(100).optional(),
+  signature: z.string().trim().max(200).optional(),
+})

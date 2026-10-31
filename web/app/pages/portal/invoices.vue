@@ -25,7 +25,7 @@ const filterOptions = [
 ]
 
 // a customer has few invoices, so fetch them all once and filter in the page
-const { data: all, status } = await useAsyncData(
+const { data: all, status, refresh } = await useAsyncData(
   'portal-invoices',
   () => api<{ data: Invoice[] }>('/portal/invoices').then((res) => res.data),
   { default: () => [] },
@@ -56,6 +56,27 @@ const columns: TableColumn<Invoice>[] = [
 ]
 
 const downloading = ref<number | null>(null)
+
+const { gateway, payingId, pay } = useOnlinePayment()
+const canPay = (i: Invoice) => gateway.value !== null && i.status === 'CONFIRMED' && balance(i) > 0
+const demoInvoice = ref<Invoice | null>(null)
+
+async function startPayment(invoice: Invoice) {
+  if (gateway.value === 'demo' && demoInvoice.value?.id !== invoice.id) {
+    demoInvoice.value = invoice // ask first: this is a simulated payment
+    return
+  }
+  demoInvoice.value = null
+  try {
+    const paid = await pay(invoice.id)
+    if (!paid) return // customer closed the Razorpay window
+    toast.add({ title: `${invoice.number} paid`, description: 'Thank you! Your payment has been recorded.', color: 'success' })
+    await refresh()
+  } catch (err) {
+    toast.add({ title: 'Payment did not go through', description: err instanceof Error && !('data' in err) ? err.message : apiErrorMessage(err), color: 'error' })
+    await refresh()
+  }
+}
 
 // fetched through useApi so the bearer token goes along, then saved from a blob URL
 async function downloadPdf(invoice: Invoice) {
@@ -104,13 +125,44 @@ async function downloadPdf(invoice: Invoice) {
         <StatusBadge :status="row.original.status" :overdue="row.original.overdue" />
       </template>
       <template #actions-cell="{ row }">
-        <UButton icon="i-lucide-download" color="neutral" variant="ghost" size="sm" :loading="downloading === row.original.id" @click="downloadPdf(row.original)">
-          PDF
-        </UButton>
+        <div class="flex justify-end gap-1">
+          <UButton
+            v-if="canPay(row.original)"
+            icon="i-lucide-credit-card"
+            size="sm"
+            :loading="payingId === row.original.id"
+            :disabled="payingId !== null"
+            @click="startPayment(row.original)"
+          >
+            Pay now
+          </UButton>
+          <UButton icon="i-lucide-download" color="neutral" variant="ghost" size="sm" :loading="downloading === row.original.id" @click="downloadPdf(row.original)">
+            PDF
+          </UButton>
+        </div>
       </template>
       <template #empty>
         <p class="py-8 text-center text-sm text-muted">No invoices here.</p>
       </template>
     </UTable>
+
+    <UModal
+      :open="demoInvoice !== null"
+      title="Demo payment"
+      :description="demoInvoice ? `Pay ${formatMoney(balance(demoInvoice))} for ${demoInvoice.number}` : ''"
+      @update:open="(open: boolean) => { if (!open) demoInvoice = null }"
+    >
+      <template #body>
+        <UAlert icon="i-lucide-flask-conical" color="warning" variant="subtle" title="This is a simulated payment" description="No real money moves. The invoice is marked as paid, just as it would be after a real online payment." />
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton color="neutral" variant="ghost" @click="demoInvoice = null">Cancel</UButton>
+          <UButton icon="i-lucide-credit-card" :loading="payingId !== null" @click="demoInvoice && startPayment(demoInvoice)">
+            Pay {{ demoInvoice ? formatMoney(balance(demoInvoice)) : '' }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </AppPage>
 </template>
