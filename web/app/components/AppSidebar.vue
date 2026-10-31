@@ -25,15 +25,18 @@ const staffLinks: NavigationMenuItem[] = [
   { label: 'Customers', icon: 'i-lucide-contact', to: '/staff/customers' },
 ]
 
-const portalLinks: NavigationMenuItem[] = [
+const cart = useCartStore()
+
+const portalLinks = computed<NavigationMenuItem[]>(() => [
   { label: 'My subscriptions', icon: 'i-lucide-repeat', to: '/portal', exact: true },
   { label: 'My invoices', icon: 'i-lucide-receipt', to: '/portal/invoices' },
-]
+  { label: 'My cart', icon: 'i-lucide-shopping-cart', to: '/portal/cart', badge: cart.count || undefined },
+])
 
 const links = computed(() => {
   if (auth.user?.role === 'ADMIN') return [adminLinks, staffLinks]
   if (auth.user?.role === 'STAFF') return [staffLinks]
-  return [portalLinks]
+  return [portalLinks.value]
 })
 </script>
 
