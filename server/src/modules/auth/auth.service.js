@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma.js'
 import { HttpError } from '../../lib/http-error.js'
 import { sendMail } from '../../lib/mailer.js'
 import { logAudit } from '../../lib/audit.js'
+import { escapeHtml } from '../../lib/format.js'
 
 const userInclude = { customer: { select: { id: true } } }
 const RESET_TOKEN_MINUTES = 30
@@ -81,7 +82,7 @@ export async function forgotPassword({ email }) {
     to: user.email,
     subject: 'Reset your Brightloop password',
     text: `Hi ${user.name},\n\nUse this link to set a new password. It expires in ${RESET_TOKEN_MINUTES} minutes.\n\n${link}\n\nIf you didn't ask for this, you can ignore this email.`,
-    html: `<p>Hi ${user.name},</p><p>Use this link to set a new password. It expires in ${RESET_TOKEN_MINUTES} minutes.</p><p><a href="${link}">Reset password</a></p><p>If you didn't ask for this, you can ignore this email.</p>`,
+    html: `<p>Hi ${escapeHtml(user.name)},</p><p>Use this link to set a new password. It expires in ${RESET_TOKEN_MINUTES} minutes.</p><p><a href="${link}">Reset password</a></p><p>If you didn't ask for this, you can ignore this email.</p>`,
   })
 }
 

@@ -2,7 +2,13 @@ import { HttpError } from '../lib/http-error.js'
 
 // Sliding-window limiter kept in memory, one counter per key (the logged-in user by default).
 // Good enough for a single API process; use a shared store if the API is ever scaled out.
-export function createRateLimiter({ limit, windowMs = 60_000, now = Date.now, key = (req) => req.user?.sub ?? req.ip }) {
+export function createRateLimiter({
+  limit,
+  windowMs = 60_000,
+  now = Date.now,
+  key = (req) => req.user?.sub ?? req.ip,
+  message = (retryAfter) => `You are sending messages too quickly. Please wait ${retryAfter} seconds.`,
+}) {
   const hits = new Map()
 
   return (req, res, next) => {
@@ -13,7 +19,7 @@ export function createRateLimiter({ limit, windowMs = 60_000, now = Date.now, ke
     if (recent.length >= limit) {
       const retryAfter = Math.ceil((windowMs - (time - recent[0])) / 1000)
       res.set('Retry-After', String(retryAfter))
-      throw new HttpError(429, `You are sending messages too quickly. Please wait ${retryAfter} seconds.`)
+      throw new HttpError(429, message(retryAfter))
     }
 
     recent.push(time)
