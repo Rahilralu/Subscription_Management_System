@@ -67,7 +67,7 @@ async function submit() {
         ? undefined
         : current.value.type === 'PAUSE'
           ? `${current.value.subscription.number} is now paused.`
-          : `Apply the plan change on ${current.value.subscription.number}.`,
+          : `${current.value.subscription.number} moves to the new plan from its next invoice.`,
       color: 'success',
     })
     open.value = false

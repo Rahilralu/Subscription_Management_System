@@ -41,6 +41,11 @@ export const actionSchema = z.object({
   validDays: z.number().int().min(1).max(365).optional(),
 })
 
+export const changePlanSchema = z.object({
+  planId: z.number().int().positive(),
+  note: z.string().trim().max(500).optional(),
+})
+
 export const listQuerySchema = z.object({
   status: z.enum(['DRAFT', 'QUOTATION', 'CONFIRMED', 'ACTIVE', 'PAUSED', 'CLOSED']).optional(),
   customerId: id.optional(),

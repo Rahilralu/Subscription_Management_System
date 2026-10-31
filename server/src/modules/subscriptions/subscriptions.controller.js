@@ -29,6 +29,11 @@ export const runAction = (action) => async (req, res) => {
   res.json({ data: await subscriptions.runAction(req.valid.params.id, action, req.user, req.valid.body) })
 }
 
+export async function changePlan(req, res) {
+  const { planId, note } = req.valid.body
+  res.json({ data: await subscriptions.changePlan(req.valid.params.id, planId, req.user, { note }) })
+}
+
 export async function renew(req, res) {
   res.status(201).json({ data: await subscriptions.renewSubscription(req.valid.params.id, req.user) })
 }
