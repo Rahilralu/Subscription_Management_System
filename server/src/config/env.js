@@ -14,4 +14,10 @@ export const env = {
   billingCron: process.env.BILLING_CRON ?? '0 1 * * *',
   reminderIntervalDays: Number(process.env.REMINDER_INTERVAL_DAYS ?? 7),
   reminderMaxCount: Number(process.env.REMINDER_MAX_COUNT ?? 3),
+
+  // shopping assistant: optional, the chat falls back to plain catalog search without a key
+  openaiApiKey: process.env.OPENAI_API_KEY || null,
+  openaiModel: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+  openaiBaseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+  chatRateLimitPerMin: Number(process.env.CHAT_RATE_LIMIT_PER_MIN ?? 20),
 }

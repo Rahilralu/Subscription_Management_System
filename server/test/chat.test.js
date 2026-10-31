@@ -66,3 +66,89 @@ test('chat messages: roles, length and ending on a user message', () => {
   assert.equal(messageSchema.safeParse({ messages: [user('   ')] }).success, false, 'blank message')
   assert.equal(messageSchema.safeParse({ messages: Array.from({ length: 21 }, () => user('hi')) }).success, false, 'too much history')
 })
+
+// ---- assistant loop, with the AI service and the database replaced by fakes ----
+// config/env.js refuses to load without these, and `npm test` does not read server/.env.
+// Nothing here connects to a database or the AI service.
+process.env.DATABASE_URL ??= 'postgresql://unused@localhost:5432/unused'
+process.env.JWT_SECRET ??= 'test-secret'
+const { respond, runAssistant, SYSTEM_PROMPT } = await import('../src/modules/chat/chat.service.js')
+const { toKeywords, toolDefinitions } = await import('../src/modules/chat/catalog.tools.js')
+
+const toolCall = (id, name, args) => ({ id, type: 'function', function: { name, arguments: typeof args === 'string' ? args : JSON.stringify(args) } })
+const scripted = (...messages) => {
+  const calls = []
+  const llm = async (request) => {
+    calls.push(structuredClone(request))
+    return messages[calls.length - 1]
+  }
+  return { llm, calls }
+}
+
+test('assistant loop: runs tools, feeds results back, keeps the proposal for the customer', async () => {
+  const proposal = { planId: 1, items: [], quote: { total: '100' } }
+  const { llm, calls } = scripted(
+    { content: null, tool_calls: [toolCall('a', 'search_catalog', { keywords: ['stock'] })] },
+    { content: null, tool_calls: [toolCall('b', 'propose_cart', { planId: 1, items: [] })] },
+    { content: 'Here you go.' },
+  )
+  const ran = []
+  const run = async (name, args) => {
+    ran.push([name, args])
+    return name === 'propose_cart' ? { proposal, forModel: { ok: true } } : { forModel: { matches: [] } }
+  }
+
+  const result = await runAssistant([{ role: 'user', content: 'I need stock software' }], { llm, run })
+
+  assert.equal(result.reply, 'Here you go.')
+  assert.equal(result.proposal, proposal)
+  assert.deepEqual(ran.map(([name]) => name), ['search_catalog', 'propose_cart'])
+  assert.equal(calls[0].messages[0].role, 'system')
+  assert.equal(calls[0].messages[0].content, SYSTEM_PROMPT)
+  assert.deepEqual(calls[0].tools, toolDefinitions)
+  const toolMessage = calls[1].messages.find((m) => m.role === 'tool')
+  assert.equal(toolMessage.tool_call_id, 'a')
+  assert.deepEqual(JSON.parse(toolMessage.content), { matches: [] })
+})
+
+test('assistant loop: bad tool arguments and tool crashes are reported to the model, not the customer', async () => {
+  const { llm, calls } = scripted(
+    { content: null, tool_calls: [toolCall('a', 'propose_cart', '{not json'), toolCall('b', 'list_plans', {})] },
+    { content: 'Sorry, let me try again.' },
+  )
+  const run = async () => { throw new Error('database password is hunter2') }
+
+  const result = await runAssistant([{ role: 'user', content: 'hi' }], { llm, run })
+
+  assert.equal(result.reply, 'Sorry, let me try again.')
+  const toolMessages = calls[1].messages.filter((m) => m.role === 'tool')
+  assert.match(toolMessages[0].content, /not valid JSON/)
+  assert.doesNotMatch(toolMessages[1].content, /hunter2/, 'internal error text never goes to the model or customer')
+})
+
+test('assistant loop: stops after a few rounds instead of looping forever', async () => {
+  let rounds = 0
+  const llm = async () => { rounds++; return { content: null, tool_calls: [toolCall(`c${rounds}`, 'list_plans', {})] } }
+  const result = await runAssistant([{ role: 'user', content: 'hi' }], { llm, run: async () => ({ forModel: {} }) })
+
+  assert.equal(rounds, 5)
+  assert.equal(result.proposal, null)
+  assert.match(result.reply, /rephrase/)
+})
+
+test('respond reports which mode answered', async () => {
+  const { llm } = scripted({ content: 'Hello!' })
+  const result = await respond([{ role: 'user', content: 'hi' }], { enabled: () => true, llm, run: async () => ({ forModel: {} }) })
+  assert.deepEqual(result, { reply: 'Hello!', proposal: null, mode: 'ai' })
+})
+
+test('keywords: lower-cased, split on punctuation, stop words removed, capped', () => {
+  assert.deepEqual(toKeywords('I need Inventory, stock-keeping & POS for our business'), ['inventory', 'stock', 'keeping', 'pos'])
+  assert.deepEqual(toKeywords(['HR', 'payroll', 'hr']), ['hr', 'payroll'])
+  assert.deepEqual(toKeywords(undefined), [])
+  assert.equal(toKeywords(Array.from({ length: 40 }, (_, i) => `word${i}`)).length, 12)
+})
+
+test('the assistant can only call the four read-only catalog tools', () => {
+  assert.deepEqual(toolDefinitions.map((t) => t.function.name), ['search_catalog', 'list_plans', 'list_discounts', 'propose_cart'])
+})
