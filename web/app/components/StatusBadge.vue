@@ -21,9 +21,16 @@ const colors: Record<string, Color> = {
 }
 
 const shown = computed(() => (props.overdue ? 'OVERDUE' : props.status))
-const label = computed(() => shown.value.charAt(0) + shown.value.slice(1).toLowerCase())
+// 'BANK_TRANSFER' -> 'Bank transfer'
+const label = computed(() => {
+  const text = shown.value.replaceAll('_', ' ').toLowerCase()
+  return text.charAt(0).toUpperCase() + text.slice(1)
+})
 </script>
 
 <template>
-  <UBadge :color="colors[shown] ?? 'neutral'" variant="subtle">{{ label }}</UBadge>
+  <UBadge :color="colors[shown] ?? 'neutral'" variant="subtle" class="gap-1.5 rounded-full">
+    <span class="size-1.5 rounded-full bg-current" aria-hidden="true" />
+    {{ label }}
+  </UBadge>
 </template>

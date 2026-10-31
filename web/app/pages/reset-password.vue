@@ -36,39 +36,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UCard class="w-full max-w-sm">
-    <template #header>
-      <h1 class="text-lg font-semibold">Set a new password</h1>
-    </template>
-
+  <AuthCard title="Set a new password" subtitle="Choose a strong password you have not used before.">
     <UAlert
       v-if="!token"
       color="error"
       variant="subtle"
+      icon="i-lucide-link-2-off"
       title="This reset link is incomplete"
       description="Open the link from your email again, or ask for a new one."
     />
 
     <UForm v-else :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-      <UFormField
-        label="New password"
-        name="password"
-        help="More than 8 characters, with an uppercase letter, a lowercase letter and a special character."
-      >
-        <UInput v-model="state.password" type="password" autocomplete="new-password" class="w-full" />
+      <UFormField label="New password" name="password">
+        <PasswordInput v-model="state.password" autocomplete="new-password" size="lg" />
+        <PasswordStrength :password="state.password" class="mt-3" />
       </UFormField>
 
       <UFormField label="Confirm password" name="confirmPassword">
-        <UInput v-model="state.confirmPassword" type="password" autocomplete="new-password" class="w-full" />
+        <PasswordInput v-model="state.confirmPassword" autocomplete="new-password" size="lg" />
       </UFormField>
 
-      <UButton type="submit" block :loading="loading">Update password</UButton>
+      <UButton type="submit" block size="lg" :loading="loading" class="mt-2">Update password</UButton>
     </UForm>
 
     <template #footer>
-      <p class="text-sm text-muted text-center">
-        <ULink to="/forgot-password" class="text-primary font-medium">Request a new link</ULink>
-      </p>
+      <ULink to="/forgot-password" class="font-medium text-primary">Request a new link</ULink>
     </template>
-  </UCard>
+  </AuthCard>
 </template>

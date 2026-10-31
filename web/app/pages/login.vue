@@ -15,6 +15,20 @@ const loading = ref(false)
 const auth = useAuthStore()
 const toast = useToast()
 
+// quick-fill for the seeded demo accounts; only compiled into dev builds
+const demoAccounts = import.meta.dev
+  ? [
+      { label: 'Admin', icon: 'i-lucide-shield-check', email: 'admin@brightloop.local', password: 'Admin@1234' },
+      { label: 'Staff', icon: 'i-lucide-briefcase', email: 'staff@brightloop.local', password: 'Staff@1234' },
+      { label: 'Customer', icon: 'i-lucide-user', email: 'asha@example.com', password: 'Customer@1234' },
+    ]
+  : []
+
+function fillDemo(account: { email: string, password: string }) {
+  state.email = account.email
+  state.password = account.password
+}
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   loading.value = true
   try {
@@ -29,31 +43,42 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UCard class="w-full max-w-sm">
-    <template #header>
-      <h1 class="text-lg font-semibold">Sign in</h1>
-      <p class="text-sm text-muted">Brightloop subscriptions</p>
-    </template>
-
-    <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+  <AuthCard title="Welcome back" subtitle="Sign in to manage your subscriptions.">
+    <UForm :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
       <UFormField label="Email" name="email">
-        <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="email" placeholder="you@company.com" size="lg" class="w-full" />
       </UFormField>
 
       <UFormField label="Password" name="password">
         <template #hint>
-          <ULink to="/forgot-password" class="text-sm">Forgot password?</ULink>
+          <ULink to="/forgot-password" class="text-xs">Forgot password?</ULink>
         </template>
-        <UInput v-model="state.password" type="password" autocomplete="current-password" class="w-full" />
+        <PasswordInput v-model="state.password" autocomplete="current-password" size="lg" />
       </UFormField>
 
-      <UButton type="submit" block :loading="loading">Sign in</UButton>
+      <UButton type="submit" block size="lg" :loading="loading">Sign in</UButton>
     </UForm>
 
+    <div v-if="demoAccounts.length" class="mt-8">
+      <USeparator label="Demo accounts" />
+      <div class="mt-4 grid grid-cols-3 gap-2">
+        <UButton
+          v-for="account in demoAccounts"
+          :key="account.label"
+          :icon="account.icon"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          block
+          @click="fillDemo(account)"
+        >
+          {{ account.label }}
+        </UButton>
+      </div>
+    </div>
+
     <template #footer>
-      <p class="text-sm text-muted text-center">
-        New to Brightloop? <ULink to="/signup" class="text-primary font-medium">Create an account</ULink>
-      </p>
+      New to Brightloop? <ULink to="/signup" class="font-medium text-primary">Create an account</ULink>
     </template>
-  </UCard>
+  </AuthCard>
 </template>

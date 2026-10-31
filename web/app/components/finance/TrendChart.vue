@@ -13,7 +13,16 @@ const data = computed<ChartData<'line'>>(() => ({
       label: 'Collected',
       data: props.monthly.map(m => m.collected),
       borderColor: theme.value.series1,
-      backgroundColor: theme.value.series1,
+      // soft fade under the main line; the chart area only exists once it has been laid out
+      fill: true,
+      backgroundColor: (ctx) => {
+        const area = ctx.chart.chartArea
+        if (!area) return 'transparent'
+        const gradient = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom)
+        gradient.addColorStop(0, theme.value.areaFrom)
+        gradient.addColorStop(1, theme.value.areaTo)
+        return gradient
+      },
       borderWidth: 2,
       pointRadius: 0,
       pointHoverRadius: 5,
@@ -47,7 +56,17 @@ const options = computed<ChartOptions<'line'>>(() => ({
       align: 'end',
       labels: { color: theme.value.text, usePointStyle: true, pointStyle: 'line', boxWidth: 24 },
     },
-    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.parsed.y)}` } },
+    tooltip: {
+      backgroundColor: theme.value.surface,
+      titleColor: theme.value.strong,
+      bodyColor: theme.value.text,
+      borderColor: theme.value.border,
+      borderWidth: 1,
+      padding: 10,
+      cornerRadius: 8,
+      boxPadding: 4,
+      callbacks: { label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.parsed.y)}` },
+    },
   },
   scales: {
     x: { grid: { display: false }, ticks: { color: theme.value.text }, border: { color: theme.value.grid } },

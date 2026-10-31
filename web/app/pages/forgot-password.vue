@@ -26,33 +26,33 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UCard class="w-full max-w-sm">
-    <template #header>
-      <h1 class="text-lg font-semibold">Forgot your password?</h1>
-      <p class="text-sm text-muted">We'll email you a link to set a new one.</p>
-    </template>
+  <AuthCard
+    :title="sent ? 'Check your inbox' : 'Forgot your password?'"
+    :subtitle="sent ? undefined : 'Enter your email and we will send you a link to set a new one.'"
+  >
+    <div v-if="sent" class="rounded-xl border border-default bg-elevated/40 p-5 text-center">
+      <span class="mx-auto grid size-12 place-items-center rounded-full bg-success/10 text-success">
+        <UIcon name="i-lucide-mail-check" class="size-6" />
+      </span>
+      <p class="mt-4 text-sm text-default">
+        If <strong class="text-highlighted">{{ state.email }}</strong> has an account, a reset link is on its way.
+        It expires in 30 minutes.
+      </p>
+      <UButton color="neutral" variant="ghost" size="sm" class="mt-3" @click="sent = false">Use a different email</UButton>
+    </div>
 
-    <UAlert
-      v-if="sent"
-      color="success"
-      variant="subtle"
-      icon="i-lucide-mail-check"
-      title="Check your inbox"
-      description="If that email has an account, a reset link is on its way. It expires in 30 minutes."
-    />
-
-    <UForm v-else :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+    <UForm v-else :schema="schema" :state="state" class="space-y-5" @submit="onSubmit">
       <UFormField label="Email" name="email">
-        <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="email" placeholder="you@company.com" size="lg" class="w-full" />
       </UFormField>
 
-      <UButton type="submit" block :loading="loading">Send reset link</UButton>
+      <UButton type="submit" block size="lg" :loading="loading">Send reset link</UButton>
     </UForm>
 
     <template #footer>
-      <p class="text-sm text-muted text-center">
-        <ULink to="/login" class="text-primary font-medium">Back to sign in</ULink>
-      </p>
+      <ULink to="/login" class="inline-flex items-center gap-1 font-medium text-primary">
+        <UIcon name="i-lucide-arrow-left" class="size-4" /> Back to sign in
+      </ULink>
     </template>
-  </UCard>
+  </AuthCard>
 </template>

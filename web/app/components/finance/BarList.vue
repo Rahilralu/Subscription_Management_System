@@ -33,6 +33,14 @@ const options = computed<ChartOptions<'bar'>>(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
+      backgroundColor: theme.value.surface,
+      titleColor: theme.value.strong,
+      bodyColor: theme.value.text,
+      borderColor: theme.value.border,
+      borderWidth: 1,
+      padding: 10,
+      cornerRadius: 8,
+      boxPadding: 4,
       callbacks: {
         label: (ctx) => {
           const item = props.items[ctx.dataIndex]

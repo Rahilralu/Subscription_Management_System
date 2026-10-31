@@ -36,40 +36,30 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 </script>
 
 <template>
-  <UCard class="w-full max-w-sm">
-    <template #header>
-      <h1 class="text-lg font-semibold">Create an account</h1>
-      <p class="text-sm text-muted">Manage your Brightloop subscriptions</p>
-    </template>
-
+  <AuthCard title="Create your account" subtitle="See and manage your Brightloop subscriptions.">
     <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
       <UFormField label="Name" name="name">
-        <UInput v-model="state.name" autocomplete="name" class="w-full" />
+        <UInput v-model="state.name" autocomplete="name" size="lg" class="w-full" />
       </UFormField>
 
       <UFormField label="Email" name="email">
-        <UInput v-model="state.email" type="email" autocomplete="email" class="w-full" />
+        <UInput v-model="state.email" type="email" autocomplete="email" placeholder="you@company.com" size="lg" class="w-full" />
       </UFormField>
 
-      <UFormField
-        label="Password"
-        name="password"
-        help="More than 8 characters, with an uppercase letter, a lowercase letter and a special character."
-      >
-        <UInput v-model="state.password" type="password" autocomplete="new-password" class="w-full" />
+      <UFormField label="Password" name="password">
+        <PasswordInput v-model="state.password" autocomplete="new-password" size="lg" />
+        <PasswordStrength :password="state.password" class="mt-3" />
       </UFormField>
 
       <UFormField label="Confirm password" name="confirmPassword">
-        <UInput v-model="state.confirmPassword" type="password" autocomplete="new-password" class="w-full" />
+        <PasswordInput v-model="state.confirmPassword" autocomplete="new-password" size="lg" />
       </UFormField>
 
-      <UButton type="submit" block :loading="loading">Create account</UButton>
+      <UButton type="submit" block size="lg" :loading="loading" class="mt-2">Create account</UButton>
     </UForm>
 
     <template #footer>
-      <p class="text-sm text-muted text-center">
-        Already have an account? <ULink to="/login" class="text-primary font-medium">Sign in</ULink>
-      </p>
+      Already have an account? <ULink to="/login" class="font-medium text-primary">Sign in</ULink>
     </template>
-  </UCard>
+  </AuthCard>
 </template>

@@ -80,3 +80,28 @@ A daily job (09:00 server time) emails overdue customers. Each invoice is remind
 - Confirming an invoice (DRAFT to CONFIRMED) is what makes it payable and eligible for reminders. Payments only update `amountPaid` and set `PAID`; they never touch other fields.
 - Write to the audit log inside your transaction: `await audit(tx, { userId: req.user.sub, action: 'invoice.confirmed', entity: 'Invoice', entityId: id, data: {...} })` from `server/src/lib/audit.js`. Admins can browse it at `/admin/audit`.
 - Dashboard MRR sums active subscription lines (`quantity x unitPrice`, falling back to the plan price) normalised to a month, before tax.
+
+## Shopping assistant and cart (customers)
+
+Customers get a chat button in the portal. They describe their business ("20 staff, need stock tracking and GST accounting"), the assistant searches the real catalog, suggests products and add-ons, and shows a menu inside the chat to tick items, change options and quantities, and see the live price. "Add selected to cart" fills the cart at `/portal/cart`, where "Request quotation" creates a `QUOTATION` subscription that staff see in their normal subscription list.
+
+### Setup
+
+Add to `server/.env` (all optional):
+
+```
+OPENAI_API_KEY=...            # without it the chat still works using plain keyword search
+OPENAI_MODEL=gpt-4o-mini      # any chat model that supports tool calling
+CHAT_RATE_LIMIT_PER_MIN=20    # messages per customer per minute
+```
+
+Keep the key in `server/.env` only (it is git-ignored). Only the customer's typed messages and customer-safe catalog fields (names, notes, prices, options) are sent to OpenAI; never cost prices, names, emails or invoices. Run `npx prisma db seed` for the extra demo products and add-ons.
+
+### How it works
+
+- `POST /api/chat/message` (customers only, rate limited) runs a tool-calling loop. The model can only call four read-only tools (`search_catalog`, `list_plans`, `list_discounts`, `propose_cart`). `propose_cart` is validated and priced by the server with the same rules as invoices, so the model can never set a price.
+- `POST /api/chat/quote` prices a cart; `POST /api/chat/quote-request` creates the quotation (max 10 open at once) and writes an audit row.
+- If there is no key, or OpenAI fails or times out, the reply falls back to keyword matching and says "Basic mode".
+- The cart lives in the browser (`localStorage`, one per user) and holds only product, option and quantity. Prices always come from the server.
+- Products have no category column, so add-ons are products whose `notes` start with "Add-on". Descriptions for search come from `notes`.
+- `buildLines` and `findActivePlan` are now exported from `subscriptions.service.js` so the cart reuses the same validation (minimum quantity, active products, variants).
