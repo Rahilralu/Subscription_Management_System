@@ -6,7 +6,6 @@ import { formatDate, parseDate, utcToday } from '../../lib/dates.js'
 const { sql, empty } = Prisma
 
 // How many billing periods fit in a month, to turn every plan into monthly recurring revenue.
-export const MONTHLY_FACTOR = { DAILY: 30, WEEKLY: 52 / 12, MONTHLY: 1, YEARLY: 1 / 12 }
 const factorSql = sql`CASE p."billingPeriod"
   WHEN 'DAILY' THEN 30 WHEN 'WEEKLY' THEN 52.0 / 12 WHEN 'MONTHLY' THEN 1 WHEN 'YEARLY' THEN 1.0 / 12 END`
 
